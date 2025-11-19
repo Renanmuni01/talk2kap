@@ -1,78 +1,44 @@
-import React, { useState } from "react";
-import { FiUser, FiStar, FiSearch, FiXCircle, FiMessageCircle } from "react-icons/fi";
+// src/components/OfficialTable.jsx
+import React, { useEffect, useState } from "react";
+import {
+  FiUser,
+  FiStar,
+  FiSearch,
+  FiXCircle,
+  FiMessageCircle,
+} from "react-icons/fi";
+import { ref, onValue, push, update, remove } from "firebase/database";
+import { db } from "../../firebaseConfig";
 
-const OfficialTable = () => {
+const emptyForm = { name: "", position: "Kagawad", rating: 5 };
+
+export default function OfficialTable() {
+  const [officials, setOfficials] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
   const [selectedOfficial, setSelectedOfficial] = useState(null);
-  const [filter, setFilter] = useState("all"); // all, topRated, lowRated
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyForm);
 
-  const officials = [
-    {
-      id: 1,
-      name: "Kapitan Juan Dela Cruz",
-      position: "Barangay Captain",
-      rating: 4.5,
-      feedbacks: [
-        { citizen: "Maria Santos", message: "Very responsive", time: "09:00 AM" },
-        { citizen: "Pedro Reyes", message: "Quick action on requests", time: "10:15 AM" },
-      ],
-    },
-    {
-      id: 2,
-      name: "Kagawad Maria Santos",
-      position: "Councilor",
-      rating: 3.2,
-      feedbacks: [{ citizen: "Ana Cruz", message: "Needs improvement on follow-up", time: "11:30 AM" }],
-    },
-    {
-      id: 3,
-      name: "Kagawad Pedro Reyes",
-      position: "Councilor",
-      rating: 5.0,
-      feedbacks: [{ citizen: "Juan Cruz", message: "Excellent service!", time: "02:00 PM" }],
-    },
-    {
-      id: 4,
-      name: "Kagawad Jose Ramirez",
-      position: "Councilor",
-      rating: 4.3,
-      feedbacks: [{ citizen: "Liza Dizon", message: "Very approachable and helpful", time: "01:15 PM" }],
-    },
-    {
-      id: 5,
-      name: "Kagawad Angela Mendoza",
-      position: "Councilor",
-      rating: 3.8,
-      feedbacks: [{ citizen: "Mark Villanueva", message: "Good but sometimes slow response", time: "03:40 PM" }],
-    },
-    {
-      id: 6,
-      name: "Kagawad Roberto Cruz",
-      position: "Councilor",
-      rating: 4.7,
-      feedbacks: [{ citizen: "Ella Santos", message: "Consistent with community meetings", time: "04:25 PM" }],
-    },
-    {
-      id: 7,
-      name: "Kagawad Teresa Lopez",
-      position: "Councilor",
-      rating: 4.0,
-      feedbacks: [{ citizen: "Carlo Reyes", message: "Organizes events well", time: "05:10 PM" }],
-    },
-    {
-      id: 8,
-      name: "Kagawad Manuel Fernandez",
-      position: "Councilor",
-      rating: 3.5,
-      feedbacks: [{ citizen: "Joan Tan", message: "Needs to improve attendance", time: "06:00 PM" }],
-    },
-  ];
+  // ✅ Realtime fetch of officials
+  useEffect(() => {
+    const officialsRef = ref(db, "officials");
+    const unsubscribe = onValue(officialsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const list = Object.entries(data).map(([id, value]) => ({
+        id,
+        ...value,
+      }));
+      setOfficials(list);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  // Filter officials based on search and rating
-  const filteredOfficials = officials.filter((o) => {
+  // ✅ Filter logic
+  const filtered = officials.filter((o) => {
     const matchesSearch =
-      o.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.position.toLowerCase().includes(searchTerm.toLowerCase());
+      o.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.position?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter =
       filter === "all" ||
       (filter === "topRated" && o.rating >= 4) ||
@@ -86,31 +52,80 @@ const OfficialTable = () => {
     lowRated: officials.filter((o) => o.rating < 4).length,
   };
 
-  const getRatingBadge = (rating) => {
-    if (rating >= 4) return "bg-green-100 text-green-800";
-    return "bg-yellow-100 text-yellow-800";
+  const getRatingBadge = (rating) =>
+    rating >= 4
+      ? "bg-green-100 text-green-800"
+      : "bg-yellow-100 text-yellow-800";
+
+  // ✅ Create new official
+  const createOfficial = async () => {
+    if (!form.name.trim()) {
+      alert("Please enter a name");
+      return;
+    }
+
+    if (form.position === "Kapitan") {
+      const existingKapitan = officials.find((o) => o.position === "Kapitan");
+      if (existingKapitan) {
+        alert("Only one Kapitan can be added!");
+        return;
+      }
+    }
+
+    const officialsRef = ref(db, "officials");
+    await push(officialsRef, { ...form });
+    setForm(emptyForm);
+  };
+
+  // ✅ Edit
+  const startEdit = (o) => {
+    setEditing(o.id);
+    setForm({
+      name: o.name,
+      position: o.position,
+      rating: o.rating,
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const r = ref(db, `officials/${editing}`);
+    await update(r, {
+      name: form.name,
+      position: form.position,
+      rating: Number(form.rating),
+    });
+    setEditing(null);
+    setForm(emptyForm);
+  };
+
+  const deleteOfficial = async (id) => {
+    if (!confirm("Delete this official?")) return;
+    await remove(ref(db, `officials/${id}`));
   };
 
   return (
-    <div className="space-y-6 h-full p-6 bg-gray-50 ">
-      {/* Stats Cards */}
+    <div className="space-y-6 h-full p-6 bg-gray-50">
+      {/* ✅ Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { title: "Total Officials", value: stats.total, icon: <FiUser className="text-blue-600" />, bg: "bg-blue-100" },
-          { title: "Top Rated (≥4⭐)", value: stats.topRated, icon: <FiStar className="text-green-600" />, bg: "bg-green-100" },
-          { title: "Needs Improvement (<4⭐)", value: stats.lowRated, icon: <FiStar className="text-yellow-600" />, bg: "bg-yellow-100" },
+          { title: "Total Officials", value: stats.total },
+          { title: "Top Rated (≥4⭐)", value: stats.topRated },
+          { title: "Needs Improvement (<4⭐)", value: stats.lowRated },
         ].map((s, i) => (
-          <div key={i} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between border">
+          <div
+            key={i}
+            className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between border"
+          >
             <div>
               <p className="text-sm text-gray-600">{s.title}</p>
               <p className="text-2xl font-bold text-gray-800">{s.value}</p>
             </div>
-            <div className={`w-10 h-10 flex items-center justify-center rounded-full ${s.bg}`}>{s.icon}</div>
           </div>
         ))}
       </div>
 
-      {/* Search + Filter */}
+      {/* ✅ Search Bar */}
       <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -119,111 +134,198 @@ const OfficialTable = () => {
             placeholder="Search officials..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${filter === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            All ({officials.length})
-          </button>
-          <button
-            onClick={() => setFilter("topRated")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${filter === "topRated" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            Top Rated ({stats.topRated})
-          </button>
-          <button
-            onClick={() => setFilter("lowRated")}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${filter === "lowRated" ? "bg-yellow-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            Needs Improvement ({stats.lowRated})
-          </button>
+          <button onClick={() => setFilter("all")}>All</button>
+          <button onClick={() => setFilter("topRated")}>Top Rated</button>
+          <button onClick={() => setFilter("lowRated")}>Needs Improvement</button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border ">
+      {/* ✅ Add/Edit Form */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <h3 className="font-semibold mb-2">
+          {editing ? "Edit Official" : "Add Official"}
+        </h3>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            placeholder="Name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="border rounded-md px-3 py-2"
+          />
+
+          <select
+            className="border rounded-md px-3 py-2"
+            value={form.position}
+            onChange={(e) => setForm({ ...form, position: e.target.value })}
+          >
+            <option value="Kapitan">Kapitan</option>
+            <option value="Kagawad">Kagawad</option>
+          </select>
+
+          {editing ? (
+            <>
+              <button
+                onClick={saveEdit}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setEditing(null);
+                  setForm(emptyForm);
+                }}
+                className="bg-gray-400 text-white px-4 py-2 rounded-md"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={createOfficial}
+              className="bg-green-600 text-white px-4 py-2 rounded-md"
+            >
+              Add
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ✅ Table */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
         <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {["Name", "Position", "Rating", "Feedback"].map((head) => (
-                <th key={head} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {head}
-                </th>
-              ))}
+              {["Name", "Position", "Rating", "Feedback", "Actions"].map(
+                (head) => (
+                  <th
+                    key={head}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {head}
+                  </th>
+                )
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredOfficials.map((o) => (
-              <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 flex items-center gap-2 truncate" title={o.name}>
-                  <FiUser className="text-gray-500" /> {o.name}
+            {filtered.map((o) => (
+              <tr key={o.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 flex items-center gap-2 truncate">
+                  <FiUser /> {o.name}
                 </td>
-                <td className="px-6 py-4 truncate" title={o.position}>{o.position}</td>
+                <td className="px-6 py-4">{o.position}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRatingBadge(o.rating)}`}>
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${getRatingBadge(
+                      o.rating
+                    )}`}
+                  >
                     {o.rating}⭐
                   </span>
                 </td>
                 <td className="px-6 py-4">
                   <button
                     onClick={() => setSelectedOfficial(o)}
-                    className="flex items-center gap-1 text-indigo-600 hover:underline"
+                    className="text-indigo-600 hover:underline flex items-center gap-1"
                   >
                     <FiMessageCircle /> View Feedback
                   </button>
+                </td>
+                <td className="px-6 py-4 flex gap-2">
+                  <button onClick={() => startEdit(o)}>Edit</button>
+                  <button onClick={() => deleteOfficial(o.id)}>Delete</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
-        {filteredOfficials.length === 0 && (
+        {filtered.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No officials found. Try adjusting your search or filters.
+            No officials found.
           </div>
         )}
       </div>
 
-      <div className="text-sm text-gray-600 text-center">Showing {filteredOfficials.length} of {officials.length} officials</div>
-
-      {/* Modal */}
       {selectedOfficial && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setSelectedOfficial(null)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-            >
-              <FiXCircle size={22} />
-            </button>
-
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-indigo-700">
-              <FiUser /> {selectedOfficial.name}
-            </h2>
-            <p className="text-gray-600 mb-2">{selectedOfficial.position}</p>
-            <p className="text-yellow-600 font-medium flex items-center gap-1 mb-4">
-              <FiStar /> Rating: {selectedOfficial.rating}
-            </p>
-
-            <div className="space-y-3 pr-2">
-              {selectedOfficial.feedbacks.map((f, i) => (
-                <div key={i} className="bg-gray-100 rounded-lg p-3 shadow-sm">
-                  <p className="text-sm text-gray-900">
-                    <strong>{f.citizen}:</strong> {f.message}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{f.time}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <FeedbackModal
+          official={selectedOfficial}
+          onClose={() => setSelectedOfficial(null)}
+        />
       )}
     </div>
   );
-};
+}
 
-export default OfficialTable;
+// ✅ Feedback Modal — shows comments & ratings from Firebase
+function FeedbackModal({ official, onClose }) {
+  const [feedbacks, setFeedbacks] = useState([]);
+
+  useEffect(() => {
+    // Read from the 'feedback' path (singular, not 'feedbacks')
+    const feedbackRef = ref(db, `officials/${official.id}/feedback`);
+    const unsubscribe = onValue(feedbackRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Convert Firebase object to array
+        const feedbackArray = Object.entries(data).map(([id, value]) => ({
+          id,
+          ...value,
+        }));
+        setFeedbacks(feedbackArray);
+      } else {
+        setFeedbacks([]);
+      }
+    });
+    return () => unsubscribe();
+  }, [official.id]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-6 relative flex flex-col max-h-[95vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+        >
+          <FiXCircle size={22} />
+        </button>
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <FiUser /> {official.name}
+        </h2>
+        <p className="text-gray-600 mb-2">{official.position}</p>
+        <p className="text-yellow-600 font-medium flex items-center gap-1 mb-4">
+          <FiStar /> Rating: {official.rating}⭐
+        </p>
+
+        <div className="space-y-3 pr-2">
+          {feedbacks.length > 0 ? (
+            feedbacks.map((f, i) => (
+              <div
+                key={i}
+                className="bg-gray-100 rounded-lg p-3 shadow-sm border"
+              >
+                <p className="text-sm text-gray-900">
+                  <strong>{f.citizen || "Anonymous"}:</strong> {f.comment}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  ⭐ {f.rating || 0} —{" "}
+                  {f.timestamp
+                    ? new Date(f.timestamp).toLocaleString()
+                    : "No date"}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 italic text-sm">
+              No feedback yet for this official.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
