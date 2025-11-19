@@ -10,7 +10,8 @@ import {
 import { ref, onValue, push, update, remove } from "firebase/database";
 import { db } from "../../firebaseConfig";
 
-const emptyForm = { name: "", position: "Kagawad", rating: 5 };
+// Default form: rating is null so new officials are unrated
+const emptyForm = { name: "", position: "Kagawad", rating: null };
 
 export default function OfficialTable() {
   const [officials, setOfficials] = useState([]);
@@ -20,7 +21,7 @@ export default function OfficialTable() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
-  // ✅ Realtime fetch of officials
+  // Realtime fetch of officials
   useEffect(() => {
     const officialsRef = ref(db, "officials");
     const unsubscribe = onValue(officialsRef, (snapshot) => {
@@ -34,7 +35,7 @@ export default function OfficialTable() {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Filter logic
+  // Filter logic
   const filtered = officials.filter((o) => {
     const matchesSearch =
       o.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,22 +43,23 @@ export default function OfficialTable() {
     const matchesFilter =
       filter === "all" ||
       (filter === "topRated" && o.rating >= 4) ||
-      (filter === "lowRated" && o.rating < 4);
+      (filter === "lowRated" && o.rating < 4 && o.rating !== null);
     return matchesSearch && matchesFilter;
   });
 
   const stats = {
     total: officials.length,
     topRated: officials.filter((o) => o.rating >= 4).length,
-    lowRated: officials.filter((o) => o.rating < 4).length,
+    lowRated: officials.filter((o) => o.rating < 4 && o.rating !== null).length,
   };
 
-  const getRatingBadge = (rating) =>
-    rating >= 4
-      ? "bg-green-100 text-green-800"
-      : "bg-yellow-100 text-yellow-800";
+  const getRatingBadge = (rating) => {
+    if (rating === null || rating === undefined)
+      return "bg-gray-100 text-gray-600"; // unrated badge
+    return rating >= 4 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800";
+  };
 
-  // ✅ Create new official
+  // Create new official
   const createOfficial = async () => {
     if (!form.name.trim()) {
       alert("Please enter a name");
@@ -77,13 +79,13 @@ export default function OfficialTable() {
     setForm(emptyForm);
   };
 
-  // ✅ Edit
+  // Edit
   const startEdit = (o) => {
     setEditing(o.id);
     setForm({
       name: o.name,
       position: o.position,
-      rating: o.rating,
+      rating: o.rating ?? null,
     });
   };
 
@@ -93,7 +95,7 @@ export default function OfficialTable() {
     await update(r, {
       name: form.name,
       position: form.position,
-      rating: Number(form.rating),
+      rating: form.rating !== null ? Number(form.rating) : null,
     });
     setEditing(null);
     setForm(emptyForm);
@@ -106,7 +108,7 @@ export default function OfficialTable() {
 
   return (
     <div className="space-y-6 h-full p-6 bg-gray-50">
-      {/* ✅ Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           { title: "Total Officials", value: stats.total },
@@ -125,7 +127,7 @@ export default function OfficialTable() {
         ))}
       </div>
 
-      {/* ✅ Search Bar */}
+      {/* Search Bar */}
       <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -144,11 +146,9 @@ export default function OfficialTable() {
         </div>
       </div>
 
-      {/* ✅ Add/Edit Form */}
+      {/* Add/Edit Form */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <h3 className="font-semibold mb-2">
-          {editing ? "Edit Official" : "Add Official"}
-        </h3>
+        <h3 className="font-semibold mb-2">{editing ? "Edit Official" : "Add Official"}</h3>
         <div className="flex gap-2 flex-wrap">
           <input
             placeholder="Name"
@@ -156,7 +156,6 @@ export default function OfficialTable() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="border rounded-md px-3 py-2"
           />
-
           <select
             className="border rounded-md px-3 py-2"
             value={form.position}
@@ -165,13 +164,9 @@ export default function OfficialTable() {
             <option value="Kapitan">Kapitan</option>
             <option value="Kagawad">Kagawad</option>
           </select>
-
           {editing ? (
             <>
-              <button
-                onClick={saveEdit}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md"
-              >
+              <button onClick={saveEdit} className="bg-blue-600 text-white px-4 py-2 rounded-md">
                 Save
               </button>
               <button
@@ -195,21 +190,19 @@ export default function OfficialTable() {
         </div>
       </div>
 
-      {/* ✅ Table */}
+      {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
         <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {["Name", "Position", "Rating", "Feedback", "Actions"].map(
-                (head) => (
-                  <th
-                    key={head}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {head}
-                  </th>
-                )
-              )}
+              {["Name", "Position", "Rating", "Feedback", "Actions"].map((head) => (
+                <th
+                  key={head}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  {head}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -220,13 +213,19 @@ export default function OfficialTable() {
                 </td>
                 <td className="px-6 py-4">{o.position}</td>
                 <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${getRatingBadge(
-                      o.rating
-                    )}`}
-                  >
-                    {o.rating}⭐
-                  </span>
+                  {o.rating !== null && o.rating !== undefined ? (
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${getRatingBadge(
+                        o.rating
+                      )}`}
+                    >
+                      {o.rating}⭐
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                      N/A
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <button
@@ -245,33 +244,26 @@ export default function OfficialTable() {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No officials found.
-          </div>
+          <div className="text-center py-8 text-gray-500">No officials found.</div>
         )}
       </div>
 
       {selectedOfficial && (
-        <FeedbackModal
-          official={selectedOfficial}
-          onClose={() => setSelectedOfficial(null)}
-        />
+        <FeedbackModal official={selectedOfficial} onClose={() => setSelectedOfficial(null)} />
       )}
     </div>
   );
 }
 
-// ✅ Feedback Modal — shows comments & ratings from Firebase
+// Feedback Modal — shows comments & ratings from Firebase
 function FeedbackModal({ official, onClose }) {
   const [feedbacks, setFeedbacks] = useState([]);
 
   useEffect(() => {
-    // Read from the 'feedback' path (singular, not 'feedbacks')
     const feedbackRef = ref(db, `officials/${official.id}/feedback`);
     const unsubscribe = onValue(feedbackRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Convert Firebase object to array
         const feedbackArray = Object.entries(data).map(([id, value]) => ({
           id,
           ...value,
@@ -298,31 +290,23 @@ function FeedbackModal({ official, onClose }) {
         </h2>
         <p className="text-gray-600 mb-2">{official.position}</p>
         <p className="text-yellow-600 font-medium flex items-center gap-1 mb-4">
-          <FiStar /> Rating: {official.rating}⭐
+          <FiStar /> Rating: {official.rating !== null ? official.rating + "⭐" : "N/A"}
         </p>
 
         <div className="space-y-3 pr-2">
           {feedbacks.length > 0 ? (
             feedbacks.map((f, i) => (
-              <div
-                key={i}
-                className="bg-gray-100 rounded-lg p-3 shadow-sm border"
-              >
+              <div key={i} className="bg-gray-100 rounded-lg p-3 shadow-sm border">
                 <p className="text-sm text-gray-900">
                   <strong>{f.citizen || "Anonymous"}:</strong> {f.comment}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  ⭐ {f.rating || 0} —{" "}
-                  {f.timestamp
-                    ? new Date(f.timestamp).toLocaleString()
-                    : "No date"}
+                  ⭐ {f.rating || 0} — {f.timestamp ? new Date(f.timestamp).toLocaleString() : "No date"}
                 </p>
               </div>
             ))
           ) : (
-            <p className="text-gray-500 italic text-sm">
-              No feedback yet for this official.
-            </p>
+            <p className="text-gray-500 italic text-sm">No feedback yet for this official.</p>
           )}
         </div>
       </div>
