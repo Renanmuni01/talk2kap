@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FiAlertCircle } from "react-icons/fi";
 import {
   FiArrowLeftCircle,
   FiChevronsRight,
@@ -342,13 +343,13 @@ const Sidebar = ({ selected, setSelected }) => {
             setSelected={setSelected}
             open={open}
           />
-          <Option
-            Icon={FiBell}
-            title="Notification"
-            selected={selected}
-            setSelected={setSelected}
-            open={open}
-          />
+          <Option 
+  Icon={FiAlertCircle}
+  title="Complaints"
+  selected={selected}
+  setSelected={setSelected}
+  open={open}
+/>
           <Option
             Icon={FiMessageCircle}
             title="Messages"
@@ -645,9 +646,9 @@ const ExampleContent = ({ selected }) => {
             <Dashpage />
           </motion.div>
         )}
-        {selected === "Notification" && (
+        {selected === "Complaints" && (
           <motion.div
-            key="notification"
+            key="Complaints"
             variants={contentVariants}
             initial="hidden"
             animate="visible"

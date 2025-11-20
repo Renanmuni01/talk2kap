@@ -2,13 +2,13 @@
 import React from 'react';
 import NotifTable from '../../Components/Pagecomponents/Notiftable';
 
-const Salepage = () => {
+const Complaints = () => {
   return (
     <div className="flex flex-col w-full h-screen overflow-hidden bg-gray-50">
       <div className="p-6 flex-1 overflow-y-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Notifications</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Complaints</h1>
           <p className="text-gray-600">Manage and track community complaints and issues</p>
         </div>
 
@@ -21,4 +21,4 @@ const Salepage = () => {
   );
 };
 
-export default Salepage;
+export default Complaints;

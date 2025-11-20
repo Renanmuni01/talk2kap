@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { FiAlertTriangle, FiClock, FiEye, FiCheck, FiX, FiFilter, FiSearch } from 'react-icons/fi';
 
-const NotifTable = () => {
+const Complaintstable = () => {
   const [filter, setFilter] = useState('all'); // all, urgent, non-urgent
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState([
@@ -404,4 +404,4 @@ const NotifTable = () => {
   );
 };
 
-export default NotifTable;
+export default Complaintstable;
