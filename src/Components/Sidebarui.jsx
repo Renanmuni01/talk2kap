@@ -651,6 +651,7 @@ const ExampleContent = ({ selected }) => {
             key="Complaints"
             variants={contentVariants}
             initial="hidden"
+            
             animate="visible"
             exit="exit"
             className="w-full h-full"
