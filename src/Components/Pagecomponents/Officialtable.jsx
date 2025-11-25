@@ -107,150 +107,185 @@ export default function OfficialTable() {
   };
 
   return (
-    <div className="space-y-6 h-full p-6 bg-gray-50">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { title: "Total Officials", value: stats.total },
-          { title: "Top Rated (≥4⭐)", value: stats.topRated },
-          { title: "Needs Improvement (<4⭐)", value: stats.lowRated },
-        ].map((s, i) => (
-          <div
-            key={i}
-            className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between border"
-          >
-            <div>
-              <p className="text-sm text-gray-600">{s.title}</p>
-              <p className="text-2xl font-bold text-gray-800">{s.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="relative min-h-screen space-y-6 p-6">
+      {/* Background Watermark Logo */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          backgroundImage: 'url("/src/assets/sanroquelogo.png")',
+          backgroundPosition: "right 35% center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "49%",
+          opacity: 0.4,
+          filter: "brightness(1.4) contrast(1.1)",
+        }}
+        aria-hidden="true"
+      />
 
-      {/* Search Bar */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search officials..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
-          />
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setFilter("all")}>All</button>
-          <button onClick={() => setFilter("topRated")}>Top Rated</button>
-          <button onClick={() => setFilter("lowRated")}>Needs Improvement</button>
-        </div>
-      </div>
-
-      {/* Add/Edit Form */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <h3 className="font-semibold mb-2">{editing ? "Edit Official" : "Add Official"}</h3>
-        <div className="flex gap-2 flex-wrap">
-          <input
-            placeholder="Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="border rounded-md px-3 py-2"
-          />
-          <select
-            className="border rounded-md px-3 py-2"
-            value={form.position}
-            onChange={(e) => setForm({ ...form, position: e.target.value })}
-          >
-            <option value="Kapitan">Kapitan</option>
-            <option value="Kagawad">Kagawad</option>
-          </select>
-          {editing ? (
-            <>
-              <button onClick={saveEdit} className="bg-blue-600 text-white px-4 py-2 rounded-md">
-                Save
-              </button>
-              <button
-                onClick={() => {
-                  setEditing(null);
-                  setForm(emptyForm);
-                }}
-                className="bg-gray-400 text-white px-4 py-2 rounded-md"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={createOfficial}
-              className="bg-green-600 text-white px-4 py-2 rounded-md"
+      {/* Content with higher z-index */}
+      <div className="relative z-10">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { title: "Total Officials", value: stats.total },
+            { title: "Top Rated (≥4⭐)", value: stats.topRated },
+            { title: "Needs Improvement (<4⭐)", value: stats.lowRated },
+          ].map((s, i) => (
+            <div
+              key={i}
+              className="bg-white/75 p-4 rounded-lg shadow-sm flex items-center justify-between border backdrop-blur-sm hover:shadow-md transition-shadow"
             >
-              Add
-            </button>
-          )}
+              <div>
+                <p className="text-sm text-gray-600">{s.title}</p>
+                <p className="text-2xl font-bold text-gray-800">{s.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
-        <table className="w-full min-w-[700px]">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              {["Name", "Position", "Rating", "Feedback", "Actions"].map((head) => (
-                <th
-                  key={head}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+        {/* Search & Filter */}
+        <div className="bg-white/70 rounded-lg shadow-sm border p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative flex-1 max-w-md w-full">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search officials..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setFilter("all")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                filter === "all" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              All ({stats.total})
+            </button>
+            <button
+              onClick={() => setFilter("topRated")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                filter === "topRated" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Top Rated ({stats.topRated})
+            </button>
+            <button
+              onClick={() => setFilter("lowRated")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                filter === "lowRated" ? "bg-yellow-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Needs Improvement ({stats.lowRated})
+            </button>
+          </div>
+        </div>
+
+        {/* Add/Edit Form */}
+        <div className="bg-white/70 p-4 rounded-lg shadow-sm border mb-4">
+          <h3 className="font-semibold mb-2">{editing ? "Edit Official" : "Add Official"}</h3>
+          <div className="flex gap-2 flex-wrap">
+            <input
+              placeholder="Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="border rounded-md px-3 py-2"
+            />
+            <select
+              className="border rounded-md px-3 py-2"
+              value={form.position}
+              onChange={(e) => setForm({ ...form, position: e.target.value })}
+            >
+              <option value="Kapitan">Kapitan</option>
+              <option value="Kagawad">Kagawad</option>
+            </select>
+            {editing ? (
+              <>
+                <button
+                  onClick={saveEdit}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md"
                 >
-                  {head}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filtered.map((o) => (
-              <tr key={o.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 flex items-center gap-2 truncate">
-                  <FiUser /> {o.name}
-                </td>
-                <td className="px-6 py-4">{o.position}</td>
-                <td className="px-6 py-4">
-                  {o.rating !== null && o.rating !== undefined ? (
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(null);
+                    setForm(emptyForm);
+                  }}
+                  className="bg-gray-400 text-white px-4 py-2 rounded-md"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={createOfficial}
+                className="bg-green-600 text-white px-4 py-2 rounded-md"
+              >
+                Add
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Officials Table */}
+        <div className="bg-white/70 rounded-lg shadow-sm border overflow-x-auto">
+          <table className="w-full min-w-[800px] text-left">
+            <thead className="bg-gray-50/70 border-b">
+              <tr>
+                {["Name", "Position", "Rating", "Feedback", "Actions"].map((head) => (
+                  <th
+                    key={head}
+                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filtered.map((o) => (
+                <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 flex items-center gap-2">
+                    <FiUser /> {o.name}
+                  </td>
+                  <td className="px-6 py-4">{o.position}</td>
+                  <td className="px-6 py-4">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${getRatingBadge(
                         o.rating
                       )}`}
                     >
-                      {o.rating}⭐
+                      {o.rating !== null ? o.rating + "⭐" : "N/A"}
                     </span>
-                  ) : (
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-                      N/A
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => setSelectedOfficial(o)}
-                    className="text-indigo-600 hover:underline flex items-center gap-1"
-                  >
-                    <FiMessageCircle /> View Feedback
-                  </button>
-                </td>
-                <td className="px-6 py-4 flex gap-2">
-                  <button onClick={() => startEdit(o)}>Edit</button>
-                  <button onClick={() => deleteOfficial(o.id)}>Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <div className="text-center py-8 text-gray-500">No officials found.</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => setSelectedOfficial(o)}
+                      className="text-indigo-600 hover:underline flex items-center gap-1"
+                    >
+                      <FiMessageCircle /> View Feedback
+                    </button>
+                  </td>
+                  <td className="px-6 py-4 flex gap-2">
+                    <button onClick={() => startEdit(o)}>Edit</button>
+                    <button onClick={() => deleteOfficial(o.id)}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="text-center py-8 text-gray-500">No officials found.</div>
+          )}
+        </div>
+
+        {selectedOfficial && (
+          <FeedbackModal official={selectedOfficial} onClose={() => setSelectedOfficial(null)} />
         )}
       </div>
-
-      {selectedOfficial && (
-        <FeedbackModal official={selectedOfficial} onClose={() => setSelectedOfficial(null)} />
-      )}
     </div>
   );
 }

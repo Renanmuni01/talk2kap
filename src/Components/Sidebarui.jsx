@@ -293,7 +293,7 @@ const Sidebar = ({ selected, setSelected }) => {
                 }}
                 className="text-md font-bold text-center"
               >
-                {open ? "Talk2Kap Admin" : "TK"}
+                {open ? "Talk2Kap Admin" : "T2K"}
               </motion.h1>
             </AnimatePresence>
             <AnimatePresence>
@@ -359,7 +359,7 @@ const Sidebar = ({ selected, setSelected }) => {
           />
           <Option
             Icon={FiUsers}
-            title="User validation"
+            title="User Validation"
             selected={selected}
             setSelected={setSelected}
             open={open}
@@ -373,7 +373,7 @@ const Sidebar = ({ selected, setSelected }) => {
           />
           <Option
             Icon={FiUsers}
-            title="Barangay officials"
+            title="Barangay Officials"
             selected={selected}
             setSelected={setSelected}
             open={open}
@@ -671,7 +671,7 @@ const ExampleContent = ({ selected }) => {
             <Messagepage />
           </motion.div>
         )}
-        {selected === "User validation" && (
+        {selected === "User Validation" && (
           <motion.div
             key="uservalidation"
             variants={contentVariants}
@@ -695,7 +695,7 @@ const ExampleContent = ({ selected }) => {
             <Reportspage/>
           </motion.div>
         )}
-        {selected === "Barangay officials" && (
+        {selected === "Barangay Officials" && (
           <motion.div
             key="barangayofficials"
             variants={contentVariants}
