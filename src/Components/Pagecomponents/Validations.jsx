@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiCheck, FiX, FiSearch, FiUser, FiPhone } from 'react-icons/fi';
+import { FiUser, FiPhone, FiMapPin, FiHome, FiX, FiSearch } from 'react-icons/fi';
 import { ref, onValue, update } from 'firebase/database';
 import { db } from '../../firebaseConfig';
 
@@ -7,18 +7,23 @@ const Validations = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
   const [users, setUsers] = useState([]);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
     const usersRef = ref(db, 'users'); 
     const unsubscribe = onValue(usersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const userArray = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-          idstatus: data[key].idstatus || 'pending', // default status
-        }));
+        const userArray = Object.keys(data).map((key) => {
+          const user = data[key];
+          return {
+            id: key,
+            complainant: `${user.firstName || ''} ${user.middleName || ''} ${user.lastName || ''}`.trim(),
+            ...user,
+            idstatus: user.idstatus || 'pending',
+          };
+        });
         setUsers(userArray);
       } else {
         setUsers([]);
@@ -30,16 +35,22 @@ const Validations = () => {
   const filteredUsers = users.filter(user => {
     const matchesFilter = filter === 'all' || user.idstatus === filter;
     const matchesSearch =
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.complainant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.purok?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.address?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const updateStatus = (id, newStatus) => {
+  const updateStatus = async (id, newStatus) => {
     const userRef = ref(db, `users/${id}`);
-    update(userRef, { idstatus: newStatus });
+    try {
+      await update(userRef, { idstatus: newStatus });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, idstatus: newStatus } : u));
+      if (selectedUser && selectedUser.id === id) setSelectedUser(prev => ({ ...prev, idstatus: newStatus }));
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   const stats = {
@@ -50,178 +61,169 @@ const Validations = () => {
   };
 
   return (
-    <div className="space-y-4 relative min-h-screen">
-      {/* Background Watermark Logo */}
-      <div 
+    <div className="min-h-screen bg-gray-50">
+      {/* Background Logo */}
+      <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage: 'url("/src/assets/sanroquelogo.png")',
           backgroundPosition: 'right 35% center',
           backgroundRepeat: 'no-repeat',
           backgroundSize: '49%',
-          opacity: 0.40,
+          opacity: 0.18,
           filter: 'brightness(1.4) contrast(1.1)'
         }}
         aria-hidden="true"
       />
 
-      {/* Content with higher z-index */}
-      <div className="relative z-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-gray-50/70 backdrop-blur-sm">
-          <div className="bg-white/75 rounded-lg p-4 shadow-sm border backdrop-blur-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Registrations</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-              </div>
-              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                <FiUser className="text-indigo-600" />
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Object.entries(stats).map(([key, value]) => (
+            <div key={key} className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-4 backdrop-blur-sm">
+              <p className="text-sm text-gray-700 font-medium">{key.charAt(0).toUpperCase() + key.slice(1)}</p>
+              <p className={`text-2xl font-bold ${
+                key==='approved'?'text-green-600':key==='pending'?'text-yellow-600':key==='declined'?'text-red-600':'text-gray-900'
+              }`}>{value}</p>
             </div>
-          </div>
-
-          <div className="bg-white/75 rounded-lg p-4 shadow-sm border backdrop-blur-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-              </div>
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <FiUser className="text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/75 rounded-lg p-4 shadow-sm border backdrop-blur-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Approved</p>
-                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <FiCheck className="text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/75 rounded-lg p-4 shadow-sm border backdrop-blur-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Declined</p>
-                <p className="text-2xl font-bold text-red-600">{stats.declined}</p>
-              </div>
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <FiX className="text-red-600" />
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Search & Filter */}
-        <div className="bg-white/70 rounded-lg shadow-sm border p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative flex-1 max-w-md w-full">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        {/* Search + Filter */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:w-80">
+            <FiSearch className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search registrations..."
+              className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white/50"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {['all', 'pending', 'approved', 'declined'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === f
-                    ? f === 'all'
-                      ? 'bg-indigo-600 text-white'
-                      : f === 'pending'
-                      ? 'bg-yellow-500 text-white'
-                      : f === 'approved'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-red-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)} ({stats[f === 'all' ? 'total' : f]})
+          <div className="flex gap-2">
+            {['all','pending','approved','declined'].map(f => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={`px-4 py-2 rounded-lg ${
+                  filter===f ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-700 border border-gray-300'
+                }`}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Registrations Table */}
-        <div className="bg-white/70 rounded-lg shadow-sm border overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left">
-            <thead className="bg-gray-50/70 border-b">
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6 overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left">
+            <thead className="bg-gray-100 border-b-2 border-gray-300">
               <tr>
-                {['User Info', 'Contact', 'Purok', 'Address', 'ID Verification', 'Status', 'Actions'].map(header => (
-                  <th key={header} className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{header}</th>
+                {['Name','Contact','Purok','Address','ID Verification','Status'].map(header => (
+                  <th key={header} className="px-6 py-4 text-sm font-bold text-gray-700">{header}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody>
               {filteredUsers.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">{user.name || '-'}</td>
-                  <td className="px-6 py-4">{user.number || '-'}</td>
-                  <td className="px-6 py-4">{user.purok || '-'}</td>
-                  <td className="px-6 py-4">{user.address || '-'}</td>
+                <tr
+                  key={user.id}
+                  className="border-b border-gray-200 hover:bg-gray-50 transition cursor-pointer"
+                  onClick={() => setSelectedUser(user)}
+                >
+                  <td className="px-6 py-4 text-gray-900">{user.complainant}</td>
+                  <td className="px-6 py-4 text-gray-900">{user.number || '-'}</td>
+                  <td className="px-6 py-4 text-gray-900">{user.purok || '-'}</td>
+                  <td className="px-6 py-4 text-gray-900">{user.address || '-'}</td>
+                  <td className="px-6 py-4 text-gray-900">{user.id_verification ? 'Sent' : '-'}</td>
                   <td className="px-6 py-4">
-                    {user.id_verification ? (
-                      <button
-                        onClick={() => setSelectedImage(user.id_verification)}
-                        className="text-indigo-600 hover:text-indigo-800 underline"
-                      >
-                        View ID
-                      </button>
-                    ) : '-'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      user.idstatus === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : user.idstatus === 'declined'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      user.idstatus==='approved'?'bg-green-100 text-green-800':
+                      user.idstatus==='declined'?'bg-red-100 text-red-800':'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {user.idstatus ? user.idstatus.charAt(0).toUpperCase() + user.idstatus.slice(1) : 'Pending'}
+                      {user.idstatus.charAt(0).toUpperCase() + user.idstatus.slice(1)}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 flex items-center gap-2">
-                    <button onClick={() => updateStatus(user.id, 'approved')} className="text-green-600 hover:text-green-800 p-2 rounded-full hover:bg-green-50">
-                      <FiCheck />
-                    </button>
-                    <button onClick={() => updateStatus(user.id, 'declined')} className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50">
-                      <FiX />
-                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {filteredUsers.length === 0 && <div className="text-center py-8 text-gray-500">No registrations found</div>}
+          {filteredUsers.length === 0 && <div className="text-center py-6 text-gray-500">No registrations found</div>}
         </div>
 
-        {/* Modal */}
-        {selectedImage && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">ID Preview</h3>
-                <button onClick={() => setSelectedImage(null)} className="text-gray-500 hover:text-gray-700">
+        {/* Modal for user details + ID preview (keep same as before) */}
+        {selectedUser && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50 p-4" onClick={()=>setSelectedUser(null)}>
+            <div className="bg-white rounded-2xl w-full max-w-2xl relative shadow-2xl overflow-hidden" onClick={(e)=>e.stopPropagation()}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white relative">
+                <button className="absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all" onClick={()=>setSelectedUser(null)}>
                   <FiX size={24} />
                 </button>
+                <h2 className="text-2xl font-bold mb-2">User Details</h2>
               </div>
-              <div className="p-4">
-                <img src={selectedImage} alt="ID Preview" className="w-full h-auto max-h-[70vh] object-contain"/>
+
+              {/* Body */}
+              <div className="p-6 space-y-6">
+                <div className={`p-4 rounded-lg ${selectedUser.idstatus==='approved'?'bg-green-100 text-green-800':selectedUser.idstatus==='declined'?'bg-red-100 text-red-800':'bg-yellow-100 text-yellow-800'} flex items-center justify-between`}>
+                  <span className="font-semibold">Status: {selectedUser.idstatus.charAt(0).toUpperCase() + selectedUser.idstatus.slice(1)}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left */}
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Name', value: selectedUser.complainant, icon: <FiUser className="text-blue-600" size={20} />, bg: 'bg-blue-100' },
+                      { label: 'Contact', value: selectedUser.number, icon: <FiPhone className="text-green-600" size={20} />, bg: 'bg-green-100' },
+                      { label: 'Purok', value: selectedUser.purok, icon: <FiMapPin className="text-yellow-600" size={20} />, bg: 'bg-yellow-100' },
+                      { label: 'Address', value: selectedUser.address, icon: <FiHome className="text-purple-600" size={20} />, bg: 'bg-purple-100' }
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-start gap-3">
+                        <div className={`${item.bg} p-2 rounded-lg`}>{item.icon}</div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium">{item.label}</p>
+                          <p className="text-base font-semibold text-gray-800">{item.value || '-'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Right */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-gray-500 font-medium">ID Verification</p>
+                      {selectedUser.id_verification ? (
+                        <img
+                          src={selectedUser.id_verification}
+                          alt="ID"
+                          onClick={()=>setPreviewImage(selectedUser.id_verification)}
+                          className="w-full max-w-xs h-auto object-cover rounded-lg shadow-lg border cursor-pointer hover:opacity-80 transition"
+                        />
+                      ) : <p className="text-gray-500 text-sm">No ID submitted</p>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 flex gap-2">
+                  <button className="flex-1 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700"
+                    onClick={()=>updateStatus(selectedUser.id,'approved')}
+                  >Approve</button>
+                  <button className="flex-1 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700"
+                    onClick={()=>updateStatus(selectedUser.id,'declined')}
+                  >Decline</button>
+                </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* Full screen ID preview */}
+        {previewImage && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]" onClick={()=>setPreviewImage(null)}>
+            <img src={previewImage} alt="Preview" className="max-w-[90%] max-h-[90%] rounded-lg shadow-2xl"/>
+            <button className="absolute top-6 right-6 text-white text-3xl font-bold hover:scale-110 transition-transform" onClick={()=>setPreviewImage(null)}>✕</button>
+          </div>
+        )}
+
       </div>
     </div>
   );

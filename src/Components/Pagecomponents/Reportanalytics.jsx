@@ -1,229 +1,484 @@
 import React, { useState } from 'react';
-import { FiAlertCircle, FiClock, FiTrendingUp, FiCheckCircle } from 'react-icons/fi';
+import { TrendingUp, Clock, BarChart3, Calendar, AlertCircle, CheckCircle, FileText, PieChart, Activity } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  ComposedChart,
+  PieChart as RPieChart,
+  Pie,
+  Cell,
+  Area,
+  AreaChart
+} from 'recharts';
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const nonUrgent = payload.find(p => p.dataKey === 'nonUrgent')?.value || 0;
+    const urgent = payload.find(p => p.dataKey === 'urgent')?.value || 0;
+    const total = payload.find(p => p.dataKey === 'total')?.value || 0;
+
+    return (
+      <div className="bg-white p-4 border-2 border-indigo-200 rounded-lg shadow-2xl">
+        <p className="font-bold text-gray-800 mb-3 text-base border-b pb-2">{label}</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-amber-600 font-medium">Non-Urgent:</span>
+            <span className="font-bold text-amber-700">{nonUrgent}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-red-600 font-medium">Urgent:</span>
+            <span className="font-bold text-red-700">{urgent}</span>
+          </div>
+          <div className="pt-2 mt-2 border-t border-gray-200">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-indigo-700 font-bold">Total:</span>
+              <span className="font-bold text-indigo-800 text-lg">{total}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 const ReportAnalytics = () => {
-  // Sample data
+  const [view, setView] = useState("monthly");
+  const [selectedMonth, setSelectedMonth] = useState("January");
+
+  const months = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
   const [complaintData] = useState({
-    urgencyLevels: {
-      high: 25,
-      medium: 45,
-      low: 30,
-    },
     monthlyComplaints: [
-      { month: 'Jan', count: 45, resolved: 42 },
-      { month: 'Feb', count: 52, resolved: 48 },
-      { month: 'Mar', count: 38, resolved: 35 },
-      { month: 'Apr', count: 65, resolved: 58 },
-      { month: 'May', count: 48, resolved: 45 },
-      { month: 'Jun', count: 55, resolved: 52 },
+      { month: "January", urgent: 2, nonUrgent: 10 },
+      { month: "February", urgent: 1, nonUrgent: 8 },
+      { month: "March", urgent: 4, nonUrgent: 7 },
+      { month: "April", urgent: 3, nonUrgent: 8 },
+      { month: "May", urgent: 1, nonUrgent: 9 },
+      { month: "June", urgent: 2, nonUrgent: 6 },
+      { month: "July", urgent: 2, nonUrgent: 9 },
+      { month: "August", urgent: 3, nonUrgent: 7 },
+      { month: "September", urgent: 1, nonUrgent: 9 },
+      { month: "October", urgent: 2, nonUrgent: 9 },
+      { month: "November", urgent: 2, nonUrgent: 9 },
+      { month: "December", urgent: 0, nonUrgent: 0 },
     ],
+
+    weeklyComplaints: {
+      January: [
+        { week: "Week 1", urgent: 0, nonUrgent: 3 },
+        { week: "Week 2", urgent: 0, nonUrgent: 2 },
+        { week: "Week 3", urgent: 1, nonUrgent: 3 },
+        { week: "Week 4", urgent: 1, nonUrgent: 2 },
+      ],
+      February: [
+        { week: "Week 1", urgent: 0, nonUrgent: 3 },
+        { week: "Week 2", urgent: 0, nonUrgent: 2 },
+        { week: "Week 3", urgent: 1, nonUrgent: 1 },
+        { week: "Week 4", urgent: 0, nonUrgent: 2 },
+      ],
+      March: [
+        { week: "Week 1", urgent: 1, nonUrgent: 2 },
+        { week: "Week 2", urgent: 1, nonUrgent: 1 },
+        { week: "Week 3", urgent: 0, nonUrgent: 3 },
+        { week: "Week 4", urgent: 2, nonUrgent: 1 },
+      ],
+      April: [
+        { week: "Week 1", urgent: 1, nonUrgent: 1 },
+        { week: "Week 2", urgent: 1, nonUrgent: 2 },
+        { week: "Week 3", urgent: 0, nonUrgent: 3 },
+        { week: "Week 4", urgent: 1, nonUrgent: 2 },
+      ],
+      May: [
+        { week: "Week 1", urgent: 0, nonUrgent: 2 },
+        { week: "Week 2", urgent: 0, nonUrgent: 4 },
+        { week: "Week 3", urgent: 1, nonUrgent: 2 },
+        { week: "Week 4", urgent: 0, nonUrgent: 1 },
+      ],
+      June: [
+        { week: "Week 1", urgent: 1, nonUrgent: 1 },
+        { week: "Week 2", urgent: 0, nonUrgent: 1 },
+        { week: "Week 3", urgent: 1, nonUrgent: 3 },
+        { week: "Week 4", urgent: 0, nonUrgent: 1 },
+      ],
+      July: [
+        { week: "Week 1", urgent: 1, nonUrgent: 3 },
+        { week: "Week 2", urgent: 1, nonUrgent: 1 },
+        { week: "Week 3", urgent: 0, nonUrgent: 2 },
+        { week: "Week 4", urgent: 0, nonUrgent: 3 },
+      ],
+      August: [
+        { week: "Week 1", urgent: 0, nonUrgent: 2 },
+        { week: "Week 2", urgent: 0, nonUrgent: 1 },
+        { week: "Week 3", urgent: 1, nonUrgent: 3 },
+        { week: "Week 4", urgent: 1, nonUrgent: 2 },
+      ],
+      September: [
+        { week: "Week 1", urgent: 0, nonUrgent: 2 },
+        { week: "Week 2", urgent: 0, nonUrgent: 3 },
+        { week: "Week 3", urgent: 0, nonUrgent: 2 },
+        { week: "Week 4", urgent: 1, nonUrgent: 2 },
+      ],
+      October: [
+        { week: "Week 1", urgent: 1, nonUrgent: 3 },
+        { week: "Week 2", urgent: 0, nonUrgent: 2 },
+        { week: "Week 3", urgent: 0, nonUrgent: 2 },
+        { week: "Week 4", urgent: 1, nonUrgent: 2 },
+      ],
+      November: [
+        { week: "Week 1", urgent: 1, nonUrgent: 3 },
+        { week: "Week 2", urgent: 1, nonUrgent: 4 },
+        { week: "Week 3", urgent: 0, nonUrgent: 2 },
+        { week: "Week 4", urgent: 0, nonUrgent: 0 },
+      ],
+      December: [
+        { week: "Week 1", urgent: 0, nonUrgent: 0 },
+        { week: "Week 2", urgent: 0, nonUrgent: 0 },
+        { week: "Week 3", urgent: 0, nonUrgent: 0 },
+        { week: "Week 4", urgent: 0, nonUrgent: 0 },
+      ],
+    },
+
     topComplaints: [
-      { type: 'Road Maintenance', count: 28, avgResolveTime: '3 days' },
-      { type: 'Drainage Issues', count: 24, avgResolveTime: '2 days' },
-      { type: 'Noise Complaints', count: 20, avgResolveTime: '1 day' },
-      { type: 'Street Lighting', count: 18, avgResolveTime: '4 days' },
-      { type: 'Waste Collection', count: 15, avgResolveTime: '2 days' },
-    ],
-    resolutionMetrics: {
-      avgResolutionTime: '2.5 days',
-      resolvedThisMonth: 85,
-      pending: 12,
-      satisfaction: '92%'
-    }
+      { type: 'Noise Complaints', count: 3 },
+      { type: 'Drainage Issues', count: 2 },
+      { type: 'Road Maintenance', count: 2 },
+      { type: 'Street Lighting', count: 1 },
+      { type: 'Waste Collection', count: 1 },
+    ]
   });
 
-  const totalUrgency = Object.values(complaintData.urgencyLevels).reduce((a, b) => a + b, 0);
+  const monthlyData = months.map((m) => {
+    const record = complaintData.monthlyComplaints.find((d) => d.month === m);
+    const urgent = record?.urgent || 0;
+    const nonUrgent = record?.nonUrgent || 0;
+    return { name: m.substring(0, 3), urgent, nonUrgent, total: urgent + nonUrgent };
+  });
+
+  const weeklyData = (complaintData.weeklyComplaints[selectedMonth] || []).map((d) => {
+    const urgent = d.urgent;
+    const nonUrgent = d.nonUrgent;
+    return { name: d.week, urgent, nonUrgent, total: urgent + nonUrgent };
+  });
+
+  const graphData = view === "monthly" ? monthlyData : weeklyData;
+
+  // Calculate comprehensive statistics based on current view
+  const currentData = view === "monthly" 
+    ? complaintData.monthlyComplaints 
+    : complaintData.weeklyComplaints[selectedMonth] || [];
+  
+  const totalComplaints = currentData.reduce((sum, item) => sum + item.urgent + item.nonUrgent, 0);
+  const totalUrgent = currentData.reduce((sum, item) => sum + item.urgent, 0);
+  const totalNonUrgent = currentData.reduce((sum, item) => sum + item.nonUrgent, 0);
+  const avgPerPeriod = view === "monthly" 
+    ? Math.round(totalComplaints / 12)
+    : Math.round(totalComplaints / currentData.length);
+  const urgentPercentage = totalComplaints > 0 ? ((totalUrgent / totalComplaints) * 100).toFixed(1) : '0.0';
+  const nonUrgentPercentage = totalComplaints > 0 ? ((totalNonUrgent / totalComplaints) * 100).toFixed(1) : '0.0';
+
+  // Pie chart data for complaint distribution
+  const pieData = [
+    { name: 'Urgent', value: totalUrgent, color: '#EF4444' },
+    { name: 'Non-Urgent', value: totalNonUrgent, color: '#F59E0B' }
+  ];
+
+  // Category distribution data
+  const categoryData = complaintData.topComplaints.map(c => ({
+    name: c.type,
+    value: c.count
+  }));
+
+  const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
 
   return (
-    <div className="relative min-h-screen space-y-6 p-4">
-
-      {/* Background Watermark Logo */}
-      <div
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      {/* Background Watermark */}
+     <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage: 'url("/src/assets/sanroquelogo.png")',
           backgroundPosition: 'right 35% center',
           backgroundRepeat: 'no-repeat',
           backgroundSize: '49%',
-          opacity: 0.15,
-          filter: 'brightness(1.3) contrast(1.2)'
+          opacity: 0.18,
+          filter: 'brightness(1.4) contrast(1.1)'
         }}
         aria-hidden="true"
       />
 
-      <div className="relative z-10">
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white/50 rounded-lg p-4 shadow-sm border hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Control Panel */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <Activity className="text-indigo-600" size={24} />
               <div>
-                <p className="text-sm font-medium text-gray-700">Total Complaints</p>
-                <p className="text-2xl font-bold text-gray-900">{totalUrgency}</p>
+                <h2 className="text-lg font-bold text-gray-900">Data Visualization Controls</h2>
+                <p className="text-sm text-gray-600">Select time period and view preferences</p>
               </div>
-              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                <FiAlertCircle className="text-indigo-600" />
-              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setView("monthly")}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 border-2 ${
+                  view === 'monthly' 
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' 
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
+                }`}
+              >
+                <Calendar size={18} />
+                Monthly View
+              </button>
+              <button
+                onClick={() => setView("weekly")}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 border-2 ${
+                  view === 'weekly' 
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' 
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400'
+                }`}
+              >
+                <Calendar size={18} />
+                Weekly View
+              </button>
             </div>
           </div>
 
-          {Object.entries(complaintData.urgencyLevels).map(([level, count]) => (
-            <div key={level} className="bg-white/50 rounded-lg p-4 shadow-sm border hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    {level.charAt(0).toUpperCase() + level.slice(1)} Priority
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">{count}</p>
-                </div>
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  level === 'high' ? 'bg-red-100' :
-                  level === 'medium' ? 'bg-yellow-100' :
-                  'bg-green-100'
-                }`}>
-                  <FiAlertCircle className={`${
-                    level === 'high' ? 'text-red-600' :
-                    level === 'medium' ? 'text-yellow-600' :
-                    'text-green-600'
-                  }`} />
-                </div>
-              </div>
+          {view === "weekly" && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <label className="block text-sm font-bold text-gray-700 mb-3">Month Selection</label>
+              <select
+                className="w-full md:w-64 px-4 py-3 border-2 border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {months.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
             </div>
-          ))}
+          )}
         </div>
 
-        {/* Urgency Distribution */}
-        <div className="bg-white/40 rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiAlertCircle className="text-red-500" /> Urgency Level Distribution
-          </h2>
-          <div className="flex gap-4">
-            {Object.entries(complaintData.urgencyLevels).map(([level, count]) => (
-              <div key={level} className="flex-1">
-                <div className="relative pt-1">
-                  <div className="flex mb-2 items-center justify-between">
-                    <span className={`
-                      text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full
-                      ${level === 'high' ? 'text-red-600 bg-red-200' :
-                        level === 'medium' ? 'text-yellow-600 bg-yellow-200' :
-                        'text-green-600 bg-green-200'}
-                    `}>{level}</span>
-                    <span className="text-xs font-semibold text-gray-600">
-                      {Math.round((count / totalUrgency) * 100)}%
-                    </span>
-                  </div>
-                  <div className="h-2 mb-4 text-xs flex rounded bg-gray-200">
-                    <div
-                      style={{ width: `${(count / totalUrgency) * 100}%` }}
-                      className={`
-                        shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center
-                        ${level === 'high' ? 'bg-red-500' :
-                          level === 'medium' ? 'bg-yellow-500' :
-                          'bg-green-500'}
-                      `}
-                    />
-                  </div>
+        {/* Key Performance Indicators */}
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <BarChart3 className="text-indigo-600" />
+            Key Performance Indicators (KPI)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-xl shadow-lg border-2 border-indigo-200 p-6 hover:shadow-2xl transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-indigo-100 rounded-lg">
+                  <BarChart3 size={28} className="text-indigo-600" />
                 </div>
+                <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">TOTAL</span>
               </div>
-            ))}
-          </div>
-        </div>
+              <p className="text-4xl font-bold text-gray-900 mb-2">{totalComplaints}</p>
+              <p className="text-sm font-medium text-gray-600">Total Complaints</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {view === 'monthly' ? 'Annual aggregate data' : `For ${selectedMonth}`}
+              </p>
+            </div>
 
-        {/* Monthly Trends */}
-        <div className="bg-white/40 rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiTrendingUp className="text-indigo-500" /> Monthly Complaint Trends
-          </h2>
-          <div className="relative h-64">
-            <div className="absolute inset-0 flex items-end justify-between gap-2">
-              {complaintData.monthlyComplaints.map((month) => (
-                <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full flex flex-col items-center">
-                    <div
-                      className="w-full bg-indigo-500 rounded-t"
-                      style={{ height: `${(month.count / 65) * 100}%` }}
-                    />
-                    <div
-                      className="w-full bg-green-500 opacity-50 -mt-2"
-                      style={{ height: `${(month.resolved / 65) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium text-gray-600">{month.month}</span>
+            <div className="bg-white rounded-xl shadow-lg border-2 border-red-200 p-6 hover:shadow-2xl transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-red-100 rounded-lg">
+                  <AlertCircle size={28} className="text-red-600" />
                 </div>
-              ))}
+                <span className="text-xs font-semibold text-red-600 bg-red-100 px-3 py-1 rounded-full">{urgentPercentage}%</span>
+              </div>
+              <p className="text-4xl font-bold text-gray-900 mb-2">{totalUrgent}</p>
+              <p className="text-sm font-medium text-gray-600">Urgent Cases</p>
+              <p className="text-xs text-gray-500 mt-2">Requires immediate attention</p>
             </div>
-          </div>
-          <div className="flex justify-center gap-4 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-indigo-500 rounded" />
-              <span className="text-sm text-gray-600">Total Complaints</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 opacity-50 rounded" />
-              <span className="text-sm text-gray-600">Resolved</span>
+
+            <div className="bg-white rounded-xl shadow-lg border-2 border-amber-200 p-6 hover:shadow-2xl transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-amber-100 rounded-lg">
+                  <CheckCircle size={28} className="text-amber-600" />
+                </div>
+                <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-3 py-1 rounded-full">{nonUrgentPercentage}%</span>
+              </div>
+              <p className="text-4xl font-bold text-gray-900 mb-2">{totalNonUrgent}</p>
+              <p className="text-sm font-medium text-gray-600">Non-Urgent Cases</p>
+              <p className="text-xs text-gray-500 mt-2">Standard priority level</p>
             </div>
           </div>
         </div>
 
-        {/* Top Complaints & Resolution Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          <div className="bg-white/40 rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FiClock className="text-orange-500" /> Top Complaints This Month
-            </h2>
-            <div className="space-y-4">
-              {complaintData.topComplaints.map((complaint, index) => (
-                <div key={complaint.type} className="flex items-center justify-between bg-white/50 p-3 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-500">#{index + 1}</span>
-                    <span className="text-sm font-medium text-gray-800">{complaint.type}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-600">{complaint.count} cases</span>
-                    <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                      ~{complaint.avgResolveTime}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Main Chart Section */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
+          <div className="mb-6">
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3 mb-2">
+              <TrendingUp className="text-indigo-600" size={28} />
+              Figure 1: Complaint Trend Analysis
+            </h3>
+            <p className="text-sm text-gray-600 ml-10">
+              {view === 'monthly' ? 'Monthly distribution of urgent and non-urgent complaints across the year' : `Weekly breakdown for ${selectedMonth} showing complaint patterns`}
+            </p>
           </div>
 
-          <div className="bg-white/40 rounded-lg shadow-sm border p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FiCheckCircle className="text-green-500" /> Resolution Metrics
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50/50 rounded-lg">
-                <p className="text-sm font-medium text-gray-600">Average Resolution Time</p>
-                <p className="text-2xl font-bold text-indigo-600">
-                  {complaintData.resolutionMetrics.avgResolutionTime}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50/50 rounded-lg">
-                <p className="text-sm font-medium text-gray-600">Resolved This Month</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {complaintData.resolutionMetrics.resolvedThisMonth}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50/50 rounded-lg">
-                <p className="text-sm font-medium text-gray-600">Pending Cases</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {complaintData.resolutionMetrics.pending}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50/50 rounded-lg">
-                <p className="text-sm font-medium text-gray-600">Satisfaction Rate</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {complaintData.resolutionMetrics.satisfaction}
-                </p>
-              </div>
-            </div>
-          </div>
+          <div className="h-96 w-full bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <ResponsiveContainer>
+              <ComposedChart data={graphData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#4B5563"
+                  style={{ fontSize: '13px', fontWeight: '600' }}
+                  label={{ value: view === 'monthly' ? 'Months' : 'Weeks', position: 'insideBottom', offset: -5, style: { fontWeight: 'bold' } }}
+                />
+                <YAxis 
+                  stroke="#4B5563"
+                  style={{ fontSize: '13px', fontWeight: '600' }}
+                  label={{ value: 'Number of Complaints', angle: -90, position: 'insideLeft', style: { fontWeight: 'bold', textAnchor: 'middle' } }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '20px', fontWeight: '600' }}
+                  iconType="circle"
+                />
 
+                <Bar 
+                  dataKey="nonUrgent" 
+                  fill="#F59E0B"
+                  name="Non-Urgent Complaints"
+                />
+                <Bar 
+                  dataKey="urgent" 
+                  fill="#EF4444"
+                  name="Urgent Complaints"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#4F46E5" 
+                  strokeWidth={3}
+                  name="Total Complaints"
+                  dot={{ fill: '#4F46E5', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 7 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
+        {/* Distribution Analysis */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Pie Chart */}
+          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-4">
+              <PieChart className="text-indigo-600" size={24} />
+              Figure 2: Complaint Priority Distribution
+            </h3>
+            <div className="h-72">
+              <ResponsiveContainer>
+                <RPieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </RPieChart>
+              </ResponsiveContainer>
+            </div>
+            
+          </div>
+
+          {/* Category Bar Chart */}
+          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-4">
+              <BarChart3 className="text-indigo-600" size={24} />
+              Figure 3: Complaint Category Distribution for The Month of November
+            </h3>
+            <div className="h-72">
+              <ResponsiveContainer>
+                <BarChart data={categoryData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+  type="number"
+  style={{ fontSize: '12px', fontWeight: '600' }}
+  ticks={[0, 1, 2, 3, 4]} // set exact values you want
+/>
+                  <YAxis dataKey="name" type="category" width={120} style={{ fontSize: '11px', fontWeight: '500' }} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#4F46E5" radius={[0, 6, 6, 0]}>
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+           
+          </div>
+        </div>
+
+        {/* Detailed Table */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-6">
+            <Clock className="text-orange-600" size={24} />
+            Table 1: Top Complaint Categories for The Month of November
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-100 border-b-2 border-gray-300">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Rank</th>
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Complaint Category</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Total Cases</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {complaintData.topComplaints.map((complaint, index) => {
+                  const percentage = ((complaint.count / complaintData.topComplaints.reduce((sum, c) => sum + c.count, 0)) * 100).toFixed(1);
+                  return (
+                    <tr key={complaint.type} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
+                          {index + 1}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-gray-800">{complaint.type}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="text-2xl font-bold text-gray-900">{complaint.count}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full font-semibold text-sm">
+                          {percentage}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
