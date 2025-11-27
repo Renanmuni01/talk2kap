@@ -13,7 +13,7 @@ const purokData = [
   { name: 'P3', population: 2894, households: 584, registered_voters: 1405 },
   { name: 'P4', population: 1553, households: 463, registered_voters: 754 },
   { name: 'P5', population: 3481, households: 508, registered_voters: 1690 },
-  { name: 'P6', population: 3074, households: 742, registered_voters: 1493 }
+  { name: 'P6', population: 3481, households: 742, registered_voters: 1493 }
 ];
 
 const pieData = purokData.map(p => ({ name: p.name, value: p.population }));
@@ -162,18 +162,19 @@ const PurokChart = () => {
         ))}
 
         {/* Total Row */}
-        <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold">
-          <td className="px-6 py-4 text-left">Total</td>
-          <td className="px-6 py-4 text-center">
-            {purokData.reduce((sum, p) => sum + p.population, 0)}
-          </td>
-          <td className="px-6 py-4 text-center">
-            {purokData.reduce((sum, p) => sum + p.households, 0)}
-          </td>
-          <td className="px-6 py-4 text-center">
-            {purokData.reduce((sum, p) => sum + p.registered_voters, 0)}
-          </td>
-        </tr>
+       <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold">
+  <td className="px-6 py-4 text-left text-xl">Total</td>
+  <td className="px-6 py-4 text-center text-xl">
+    {purokData.reduce((sum, p) => sum + p.population, 0)}
+  </td>
+  <td className="px-6 py-4 text-center text-xl">
+    {purokData.reduce((sum, p) => sum + p.households, 0)}
+  </td>
+  <td className="px-6 py-4 text-center text-xl">
+    {purokData.reduce((sum, p) => sum + p.registered_voters, 0)}
+  </td>
+</tr>
+
 
       </tbody>
     </table>

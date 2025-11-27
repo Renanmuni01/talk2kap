@@ -8,6 +8,7 @@ import { db } from "../../firebaseConfig";
 
 const Complaintstable = () => {
   const [filter, setFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
@@ -34,7 +35,7 @@ const Complaintstable = () => {
               complaintKey: complaintId,
               userId,
               name: fullName,
-              purok: user.purok || "—",
+              purok: user.incidentPurok || "—",
               address: user.address || "—",
               evidencePhoto: user.userComplaints[complaintId].evidencePhoto || null,
               ...user.userComplaints[complaintId],
@@ -43,25 +44,43 @@ const Complaintstable = () => {
         }
       });
 
+      // Sort by timestamp - latest first
+      allComplaints.sort((a, b) => {
+        const dateA = parseTimestamp(a.timestamp);
+        const dateB = parseTimestamp(b.timestamp);
+        return dateB - dateA;
+      });
+
       setNotifications(allComplaints);
     });
 
     return () => unsubscribe();
   }, []);
 
+  const parseTimestamp = (timestamp) => {
+    if (!timestamp) return new Date(0);
+    const [datePart, timePart] = timestamp.split(", ");
+    const [day, month, year] = datePart.split("/");
+    const validDate = new Date(`${year}-${month}-${day}T${timePart}`);
+    return isNaN(validDate.getTime()) ? new Date(0) : validDate;
+  };
+
   const filteredNotifications = notifications.filter((notification) => {
-    const matchesFilter =
+    const matchesUrgencyFilter =
       filter === "all" ||
       (filter === "urgent" && notification.label === "urgent") ||
-      (filter === "non - urgent" && notification.label !== "urgent");
+      (filter === "non-urgent" && notification.label !== "urgent");
+
+    const matchesStatusFilter =
+      statusFilter === "all" || notification.status === statusFilter;
 
     const matchesSearch =
       notification.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.purok?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.incidentPurok?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       notification.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       notification.message?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    return matchesUrgencyFilter && matchesStatusFilter && matchesSearch;
   });
 
   const getUrgencyDisplay = (label) => {
@@ -72,15 +91,16 @@ const Complaintstable = () => {
   };
 
   const getIssueColor = (type) => {
-  const colors = {
-    medical: 'bg-red-100 text-red-800',       // Medical = Red
-    fire: 'bg-orange-100 text-orange-800',   // Fire = Orange
-    noise: 'bg-purple-100 text-purple-800',
-    waste: 'bg-green-100 text-green-800',
-    infrastructure: 'bg-gray-100 text-gray-800'
+    const colors = {
+      medical: 'bg-red-100 text-red-800',
+      fire: 'bg-orange-100 text-orange-800',
+      noise: 'bg-purple-100 text-purple-800',
+      waste: 'bg-green-100 text-green-800',
+      infrastructure: 'bg-gray-100 text-gray-800'
+    };
+    return colors[type] || 'bg-gray-100 text-gray-800';
   };
-  return colors[type] || 'bg-gray-100 text-gray-800';
-};
+
   const getStatusDisplay = (status) => {
     const statusConfig = {
       pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
@@ -133,23 +153,51 @@ const Complaintstable = () => {
           ))}
         </div>
 
-        {/* Search + Filter */}
-        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-80">
-            <FiSearch className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search complaints..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white/50"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Search + Filters */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6 space-y-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-80">
+              <FiSearch className="absolute left-3 top-1/2 text-gray-400 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search complaints..."
+                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-white/50"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            {/* Urgency Filter */}
+            <div className="flex gap-2">
+              {['all','urgent','non-urgent'].map(f => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-4 py-2 rounded-lg transition ${filter===f?'bg-indigo-600 text-white shadow':'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}>
+                  {f.charAt(0).toUpperCase() + f.slice(1).replace('-', ' ')}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
-            {['all','urgent','non - urgent'].map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-lg ${filter===f?'bg-indigo-600 text-white shadow':'bg-white text-gray-700 border border-gray-300'}`}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+
+          {/* Status Filter */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-semibold text-gray-700">Status:</span>
+            {['all', 'pending', 'in-progress', 'resolved'].map(status => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-2 rounded-lg transition text-sm font-medium ${
+                  statusFilter === status
+                    ? status === 'pending'
+                      ? 'bg-yellow-600 text-white shadow-lg'
+                      : status === 'in-progress'
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : status === 'resolved'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gray-800 text-white shadow-lg'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {status === 'all' ? 'All Status' : status.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
               </button>
             ))}
           </div>
@@ -177,7 +225,7 @@ const Complaintstable = () => {
                         {urgency.icon} {urgency.text}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{n.purok}</td>
+                    <td className="px-6 py-4">Purok {n.incidentPurok}</td>
                     <td className="px-6 py-4">{n.name}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getIssueColor(n.type)}`}>{n.type}</span>
@@ -254,7 +302,7 @@ const Complaintstable = () => {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Purok</p>
-                        <p className="text-base font-semibold text-gray-800">{selectedComplaint.incidentPurok}</p>
+                        <p className="text-base font-semibold text-gray-800">Purok {selectedComplaint.incidentPurok}</p>
                       </div>
                     </div>
 
@@ -374,7 +422,7 @@ const Complaintstable = () => {
         {/* FULL SCREEN IMAGE PREVIEW */}
         {previewImage && (
           <div
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[9999]"
             onClick={() => setPreviewImage(null)}
           >
             <img

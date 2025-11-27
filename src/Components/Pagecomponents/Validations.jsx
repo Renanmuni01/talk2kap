@@ -156,7 +156,7 @@ const Validations = () => {
             <div className="bg-white rounded-2xl w-full max-w-2xl relative shadow-2xl overflow-hidden" onClick={(e)=>e.stopPropagation()}>
               {/* Header */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white relative">
-                <button className="absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all" onClick={()=>setSelectedUser(null)}>
+                <button className="absolute top-4 right-4 text-white hover:bg-red-500 hover:bg-opacity-20 rounded-full p-2 transition-all" onClick={()=>setSelectedUser(null)}>
                   <FiX size={24} />
                 </button>
                 <h2 className="text-2xl font-bold mb-2">User Details</h2>
@@ -218,11 +218,24 @@ const Validations = () => {
 
         {/* Full screen ID preview */}
         {previewImage && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]" onClick={()=>setPreviewImage(null)}>
-            <img src={previewImage} alt="Preview" className="max-w-[90%] max-h-[90%] rounded-lg shadow-2xl"/>
-            <button className="absolute top-6 right-6 text-white text-3xl font-bold hover:scale-110 transition-transform" onClick={()=>setPreviewImage(null)}>✕</button>
-          </div>
-        )}
+  <div
+    className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[9999]"
+    onClick={() => setPreviewImage(null)}
+  >
+    <img
+      src={previewImage}
+      alt="Preview"
+      className="max-w-[90%] max-h-[90%] rounded-lg shadow-2xl"
+    />
+    <button
+      className="absolute top-6 right-6 text-white text-3xl font-bold hover:scale-110 transition-transform"
+      onClick={() => setPreviewImage(null)}
+    >
+      ✕
+    </button>
+  </div>
+)}
+
 
       </div>
     </div>

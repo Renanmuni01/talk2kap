@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrendingUp, Clock, BarChart3, Calendar, AlertCircle, CheckCircle, FileText, PieChart, Activity } from 'lucide-react';
 import {
   BarChart,
@@ -17,6 +17,8 @@ import {
   Area,
   AreaChart
 } from 'recharts';
+import { ref, onValue } from "firebase/database";
+import { db } from "../../firebaseConfig";
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -52,111 +54,257 @@ const CustomTooltip = ({ active, payload, label }) => {
 const ReportAnalytics = () => {
   const [view, setView] = useState("monthly");
   const [selectedMonth, setSelectedMonth] = useState("January");
+  const [complaintData, setComplaintData] = useState({
+    monthlyComplaints: [],
+    weeklyComplaints: {},
+    topComplaints: []
+  });
+  const [loading, setLoading] = useState(true);
 
   const months = [
     "January","February","March","April","May","June",
     "July","August","September","October","November","December"
   ];
 
-  const [complaintData] = useState({
-    monthlyComplaints: [
-      { month: "January", urgent: 2, nonUrgent: 10 },
-      { month: "February", urgent: 1, nonUrgent: 8 },
-      { month: "March", urgent: 4, nonUrgent: 7 },
-      { month: "April", urgent: 3, nonUrgent: 8 },
-      { month: "May", urgent: 1, nonUrgent: 9 },
-      { month: "June", urgent: 2, nonUrgent: 6 },
-      { month: "July", urgent: 2, nonUrgent: 9 },
-      { month: "August", urgent: 3, nonUrgent: 7 },
-      { month: "September", urgent: 1, nonUrgent: 9 },
-      { month: "October", urgent: 2, nonUrgent: 9 },
-      { month: "November", urgent: 2, nonUrgent: 9 },
-      { month: "December", urgent: 0, nonUrgent: 0 },
-    ],
+  const formatComplaintType = (type) => {
+    const typeMapping = {
+      'medical': 'Medical Emergency',
+      'fire': 'Fire Incident',
+      'noise': 'Noise Complaints',
+      'waste': 'Waste Management',
+      'infrastructure': 'Infrastructure Issues',
+      'unknown': 'Other Issues'
+    };
+    return typeMapping[type?.toLowerCase()] || type;
+  };
 
-    weeklyComplaints: {
-      January: [
-        { week: "Week 1", urgent: 0, nonUrgent: 3 },
-        { week: "Week 2", urgent: 0, nonUrgent: 2 },
-        { week: "Week 3", urgent: 1, nonUrgent: 3 },
-        { week: "Week 4", urgent: 1, nonUrgent: 2 },
-      ],
-      February: [
-        { week: "Week 1", urgent: 0, nonUrgent: 3 },
-        { week: "Week 2", urgent: 0, nonUrgent: 2 },
-        { week: "Week 3", urgent: 1, nonUrgent: 1 },
-        { week: "Week 4", urgent: 0, nonUrgent: 2 },
-      ],
-      March: [
-        { week: "Week 1", urgent: 1, nonUrgent: 2 },
-        { week: "Week 2", urgent: 1, nonUrgent: 1 },
-        { week: "Week 3", urgent: 0, nonUrgent: 3 },
-        { week: "Week 4", urgent: 2, nonUrgent: 1 },
-      ],
-      April: [
-        { week: "Week 1", urgent: 1, nonUrgent: 1 },
-        { week: "Week 2", urgent: 1, nonUrgent: 2 },
-        { week: "Week 3", urgent: 0, nonUrgent: 3 },
-        { week: "Week 4", urgent: 1, nonUrgent: 2 },
-      ],
-      May: [
-        { week: "Week 1", urgent: 0, nonUrgent: 2 },
-        { week: "Week 2", urgent: 0, nonUrgent: 4 },
-        { week: "Week 3", urgent: 1, nonUrgent: 2 },
-        { week: "Week 4", urgent: 0, nonUrgent: 1 },
-      ],
-      June: [
-        { week: "Week 1", urgent: 1, nonUrgent: 1 },
-        { week: "Week 2", urgent: 0, nonUrgent: 1 },
-        { week: "Week 3", urgent: 1, nonUrgent: 3 },
-        { week: "Week 4", urgent: 0, nonUrgent: 1 },
-      ],
-      July: [
-        { week: "Week 1", urgent: 1, nonUrgent: 3 },
-        { week: "Week 2", urgent: 1, nonUrgent: 1 },
-        { week: "Week 3", urgent: 0, nonUrgent: 2 },
-        { week: "Week 4", urgent: 0, nonUrgent: 3 },
-      ],
-      August: [
-        { week: "Week 1", urgent: 0, nonUrgent: 2 },
-        { week: "Week 2", urgent: 0, nonUrgent: 1 },
-        { week: "Week 3", urgent: 1, nonUrgent: 3 },
-        { week: "Week 4", urgent: 1, nonUrgent: 2 },
-      ],
-      September: [
-        { week: "Week 1", urgent: 0, nonUrgent: 2 },
-        { week: "Week 2", urgent: 0, nonUrgent: 3 },
-        { week: "Week 3", urgent: 0, nonUrgent: 2 },
-        { week: "Week 4", urgent: 1, nonUrgent: 2 },
-      ],
-      October: [
-        { week: "Week 1", urgent: 1, nonUrgent: 3 },
-        { week: "Week 2", urgent: 0, nonUrgent: 2 },
-        { week: "Week 3", urgent: 0, nonUrgent: 2 },
-        { week: "Week 4", urgent: 1, nonUrgent: 2 },
-      ],
-      November: [
-        { week: "Week 1", urgent: 1, nonUrgent: 3 },
-        { week: "Week 2", urgent: 1, nonUrgent: 4 },
-        { week: "Week 3", urgent: 0, nonUrgent: 2 },
-        { week: "Week 4", urgent: 0, nonUrgent: 0 },
-      ],
-      December: [
-        { week: "Week 1", urgent: 0, nonUrgent: 0 },
-        { week: "Week 2", urgent: 0, nonUrgent: 0 },
-        { week: "Week 3", urgent: 0, nonUrgent: 0 },
-        { week: "Week 4", urgent: 0, nonUrgent: 0 },
-      ],
-    },
+  const parseTimestamp = (timestamp) => {
+    if (!timestamp) return null;
+    const [datePart, timePart] = timestamp.split(", ");
+    if (!datePart || !timePart) return null;
+    const [day, month, year] = datePart.split("/");
+    const validDate = new Date(`${year}-${month}-${day}T${timePart}`);
+    return isNaN(validDate.getTime()) ? null : validDate;
+  };
 
-    topComplaints: [
-      { type: 'Noise Complaints', count: 3 },
-      { type: 'Drainage Issues', count: 2 },
-      { type: 'Road Maintenance', count: 2 },
-      { type: 'Street Lighting', count: 1 },
-      { type: 'Waste Collection', count: 1 },
-    ]
-  });
+  const getWeekOfMonth = (date) => {
+    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+    const dayOfMonth = date.getDate();
+    const dayOfWeek = firstDay.getDay();
+    const weekNumber = Math.ceil((dayOfMonth + dayOfWeek) / 7);
+    return Math.min(weekNumber, 4); // Cap at week 4
+  };
+
+  useEffect(() => {
+    const usersRef = ref(db, "users");
+    const unsubscribe = onValue(usersRef, (snapshot) => {
+      // Base historical data (January to November Week 3)
+      const baseMonthlyData = [
+        { month: "January", urgent: 2, nonUrgent: 10 },
+        { month: "February", urgent: 1, nonUrgent: 8 },
+        { month: "March", urgent: 4, nonUrgent: 7 },
+        { month: "April", urgent: 3, nonUrgent: 8 },
+        { month: "May", urgent: 1, nonUrgent: 9 },
+        { month: "June", urgent: 2, nonUrgent: 6 },
+        { month: "July", urgent: 2, nonUrgent: 9 },
+        { month: "August", urgent: 3, nonUrgent: 7 },
+        { month: "September", urgent: 1, nonUrgent: 9 },
+        { month: "October", urgent: 2, nonUrgent: 9 },
+        { month: "November", urgent: 2, nonUrgent: 9 },
+        { month: "December", urgent: 0, nonUrgent: 0 },
+      ];
+
+      const baseWeeklyData = {
+        January: [
+          { week: "Week 1", urgent: 0, nonUrgent: 3 },
+          { week: "Week 2", urgent: 0, nonUrgent: 2 },
+          { week: "Week 3", urgent: 1, nonUrgent: 3 },
+          { week: "Week 4", urgent: 1, nonUrgent: 2 },
+        ],
+        February: [
+          { week: "Week 1", urgent: 0, nonUrgent: 3 },
+          { week: "Week 2", urgent: 0, nonUrgent: 2 },
+          { week: "Week 3", urgent: 1, nonUrgent: 1 },
+          { week: "Week 4", urgent: 0, nonUrgent: 2 },
+        ],
+        March: [
+          { week: "Week 1", urgent: 1, nonUrgent: 2 },
+          { week: "Week 2", urgent: 1, nonUrgent: 1 },
+          { week: "Week 3", urgent: 0, nonUrgent: 3 },
+          { week: "Week 4", urgent: 2, nonUrgent: 1 },
+        ],
+        April: [
+          { week: "Week 1", urgent: 1, nonUrgent: 1 },
+          { week: "Week 2", urgent: 1, nonUrgent: 2 },
+          { week: "Week 3", urgent: 0, nonUrgent: 3 },
+          { week: "Week 4", urgent: 1, nonUrgent: 2 },
+        ],
+        May: [
+          { week: "Week 1", urgent: 0, nonUrgent: 2 },
+          { week: "Week 2", urgent: 0, nonUrgent: 4 },
+          { week: "Week 3", urgent: 1, nonUrgent: 2 },
+          { week: "Week 4", urgent: 0, nonUrgent: 1 },
+        ],
+        June: [
+          { week: "Week 1", urgent: 1, nonUrgent: 1 },
+          { week: "Week 2", urgent: 0, nonUrgent: 1 },
+          { week: "Week 3", urgent: 1, nonUrgent: 3 },
+          { week: "Week 4", urgent: 0, nonUrgent: 1 },
+        ],
+        July: [
+          { week: "Week 1", urgent: 1, nonUrgent: 3 },
+          { week: "Week 2", urgent: 1, nonUrgent: 1 },
+          { week: "Week 3", urgent: 0, nonUrgent: 2 },
+          { week: "Week 4", urgent: 0, nonUrgent: 3 },
+        ],
+        August: [
+          { week: "Week 1", urgent: 0, nonUrgent: 2 },
+          { week: "Week 2", urgent: 0, nonUrgent: 1 },
+          { week: "Week 3", urgent: 1, nonUrgent: 3 },
+          { week: "Week 4", urgent: 1, nonUrgent: 2 },
+        ],
+        September: [
+          { week: "Week 1", urgent: 0, nonUrgent: 2 },
+          { week: "Week 2", urgent: 0, nonUrgent: 3 },
+          { week: "Week 3", urgent: 0, nonUrgent: 2 },
+          { week: "Week 4", urgent: 1, nonUrgent: 2 },
+        ],
+        October: [
+          { week: "Week 1", urgent: 1, nonUrgent: 3 },
+          { week: "Week 2", urgent: 0, nonUrgent: 2 },
+          { week: "Week 3", urgent: 0, nonUrgent: 2 },
+          { week: "Week 4", urgent: 1, nonUrgent: 2 },
+        ],
+        November: [
+          { week: "Week 1", urgent: 1, nonUrgent: 3 },
+          { week: "Week 2", urgent: 1, nonUrgent: 4 },
+          { week: "Week 3", urgent: 0, nonUrgent: 2 },
+          { week: "Week 4", urgent: 0, nonUrgent: 0 },
+        ],
+        December: [
+          { week: "Week 1", urgent: 0, nonUrgent: 0 },
+          { week: "Week 2", urgent: 0, nonUrgent: 0 },
+          { week: "Week 3", urgent: 0, nonUrgent: 0 },
+          { week: "Week 4", urgent: 0, nonUrgent: 0 },
+        ],
+      };
+
+      // Base top complaints will be calculated from historical + new data
+      const baseTypeMapping = {
+        'noise': 3,
+        'waste': 1,
+        'infrastructure': 4, // Combined road maintenance + street lighting + drainage
+        'medical': 0,
+        'fire': 0
+      };
+
+      if (!snapshot.exists()) {
+        // If no Firebase data, show base historical counts
+        const fallbackComplaints = Object.entries(baseTypeMapping)
+          .filter(([_, count]) => count > 0)
+          .map(([type, count]) => ({ type: formatComplaintType(type), count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+
+        setComplaintData({
+          monthlyComplaints: baseMonthlyData,
+          weeklyComplaints: baseWeeklyData,
+          topComplaints: fallbackComplaints
+        });
+        setLoading(false);
+        return;
+      }
+
+      const usersData = snapshot.val();
+      const allComplaints = [];
+
+      // Collect all complaints from Firebase
+      Object.keys(usersData).forEach((userId) => {
+        const user = usersData[userId];
+        if (user.userComplaints) {
+          Object.keys(user.userComplaints).forEach((complaintId) => {
+            const complaint = user.userComplaints[complaintId];
+            const parsedDate = parseTimestamp(complaint.timestamp);
+            
+            if (parsedDate) {
+              allComplaints.push({
+                ...complaint,
+                date: parsedDate,
+                month: parsedDate.getMonth(),
+                monthName: months[parsedDate.getMonth()],
+                week: getWeekOfMonth(parsedDate),
+                isUrgent: complaint.label === 'urgent'
+              });
+            }
+          });
+        }
+      });
+
+      // Merge base data with new Firebase data
+      const monthlyStats = baseMonthlyData.map((baseMonth, index) => {
+        const newMonthComplaints = allComplaints.filter(c => c.month === index);
+        const newUrgent = newMonthComplaints.filter(c => c.isUrgent).length;
+        const newNonUrgent = newMonthComplaints.filter(c => !c.isUrgent).length;
+        
+        return {
+          month: baseMonth.month,
+          urgent: baseMonth.urgent + newUrgent,
+          nonUrgent: baseMonth.nonUrgent + newNonUrgent
+        };
+      });
+
+      // Merge weekly data
+      const weeklyStats = {};
+      months.forEach((monthName, monthIndex) => {
+        const baseWeeks = baseWeeklyData[monthName] || [
+          { week: "Week 1", urgent: 0, nonUrgent: 0 },
+          { week: "Week 2", urgent: 0, nonUrgent: 0 },
+          { week: "Week 3", urgent: 0, nonUrgent: 0 },
+          { week: "Week 4", urgent: 0, nonUrgent: 0 },
+        ];
+
+        weeklyStats[monthName] = baseWeeks.map((baseWeek, weekIndex) => {
+          const weekNum = weekIndex + 1;
+          const newWeekComplaints = allComplaints.filter(
+            c => c.month === monthIndex && c.week === weekNum
+          );
+          const newUrgent = newWeekComplaints.filter(c => c.isUrgent).length;
+          const newNonUrgent = newWeekComplaints.filter(c => !c.isUrgent).length;
+          
+          return {
+            week: baseWeek.week,
+            urgent: baseWeek.urgent + newUrgent,
+            nonUrgent: baseWeek.nonUrgent + newNonUrgent
+          };
+        });
+      });
+
+      // Merge top complaints - start with base historical data
+      const typeCount = { ...baseTypeMapping };
+      
+      // Add new complaints from Firebase
+      allComplaints.forEach(complaint => {
+        const type = complaint.type?.toLowerCase() || 'unknown';
+        typeCount[type] = (typeCount[type] || 0) + 1;
+      });
+
+      // Format and sort
+      const topComplaints = Object.entries(typeCount)
+        .filter(([_, count]) => count > 0)
+        .map(([type, count]) => ({ type: formatComplaintType(type), count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      setComplaintData({
+        monthlyComplaints: monthlyStats,
+        weeklyComplaints: weeklyStats,
+        topComplaints
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const monthlyData = months.map((m) => {
     const record = complaintData.monthlyComplaints.find((d) => d.month === m);
@@ -200,6 +348,17 @@ const ReportAnalytics = () => {
   }));
 
   const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
@@ -402,24 +561,23 @@ const ReportAnalytics = () => {
                 </RPieChart>
               </ResponsiveContainer>
             </div>
-            
           </div>
 
           {/* Category Bar Chart */}
           <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-4">
               <BarChart3 className="text-indigo-600" size={24} />
-              Figure 3: Complaint Category Distribution for The Month of November
+              Figure 3: Complaint Category Distribution
             </h3>
             <div className="h-72">
               <ResponsiveContainer>
                 <BarChart data={categoryData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
-  type="number"
-  style={{ fontSize: '12px', fontWeight: '600' }}
-  ticks={[0, 1, 2, 3, 4]} // set exact values you want
-/>
+                    type="number"
+                    style={{ fontSize: '12px', fontWeight: '600' }}
+                    allowDecimals={false}
+                  />
                   <YAxis dataKey="name" type="category" width={120} style={{ fontSize: '11px', fontWeight: '500' }} />
                   <Tooltip />
                   <Bar dataKey="value" fill="#4F46E5" radius={[0, 6, 6, 0]}>
@@ -430,7 +588,6 @@ const ReportAnalytics = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-           
           </div>
         </div>
 
@@ -438,7 +595,7 @@ const ReportAnalytics = () => {
         <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
           <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-6">
             <Clock className="text-orange-600" size={24} />
-            Table 1: Top Complaint Categories for The Month of November
+            Table 1: Top Complaint Categories
           </h3>
 
           <div className="overflow-x-auto">
@@ -452,29 +609,38 @@ const ReportAnalytics = () => {
                 </tr>
               </thead>
               <tbody>
-                {complaintData.topComplaints.map((complaint, index) => {
-                  const percentage = ((complaint.count / complaintData.topComplaints.reduce((sum, c) => sum + c.count, 0)) * 100).toFixed(1);
-                  return (
-                    <tr key={complaint.type} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
-                          {index + 1}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold text-gray-800">{complaint.type}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="text-2xl font-bold text-gray-900">{complaint.count}</span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full font-semibold text-sm">
-                          {percentage}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {complaintData.topComplaints.length > 0 ? (
+                  complaintData.topComplaints.map((complaint, index) => {
+                    const totalCases = complaintData.topComplaints.reduce((sum, c) => sum + c.count, 0);
+                    const percentage = totalCases > 0 ? ((complaint.count / totalCases) * 100).toFixed(1) : '0.0';
+                    return (
+                      <tr key={complaint.type} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-semibold text-gray-800">{complaint.type}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-2xl font-bold text-gray-900">{complaint.count}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-block bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full font-semibold text-sm">
+                            {percentage}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                      No complaint data available yet
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
