@@ -1,11 +1,11 @@
-// --- FULL PUROKCHART UPDATED WITH REPORTANALYTICS TABLE STYLE ---
+// --- FULL PUROKCHART UPDATED WITH WHITE TABLE ---
 
 import React from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
-import { Users, BarChart3, PieChart as PieIcon, ClipboardList } from 'lucide-react';
+import { Users, BarChart3, ClipboardList } from 'lucide-react';
 
 const purokData = [
   { name: 'P1', population: 1228, households: 328, registered_voters: 596 },
@@ -38,11 +38,28 @@ const PurokChart = () => {
 
       <div className="relative z-10 max-w-7xl mx-auto space-y-10">
 
-        {/* Title */}
-        <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-          <Users className="text-indigo-600" size={32} />
-          Purok Overview Dashboard
-        </h2>
+        {/* Improved Dashboard Header */}
+        <div className="text-center mb-12 space-y-3">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <div className="h-1 w-16 bg-gradient-to-r from-transparent to-indigo-500 rounded-full"></div>
+            <Users className="text-indigo-600 text-4xl animate-pulse" />
+            <div className="h-1 w-16 bg-gradient-to-l from-transparent to-indigo-500 rounded-full"></div>
+          </div>
+          
+          <h1 className="text-6xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Purok Overview Dashboard
+          </h1>
+          
+          <p className="text-gray-600 text-lg font-medium">
+            Comprehensive demographic data and statistics by Purok
+          </p>
+          
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <div className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="h-1.5 w-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="h-1.5 w-1.5 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -97,7 +114,7 @@ const PurokChart = () => {
           {/* Pie Chart */}
           <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-4">
-              <PieIcon className="text-indigo-600" size={24} />
+              <BarChart3 className="text-indigo-600" size={24} />
               Figure 2: Population Distribution by Purok
             </h3>
 
@@ -125,61 +142,60 @@ const PurokChart = () => {
           </div>
         </div>
 
-       <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
+        {/* Table with White Background */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
   
-  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-6">
-    <ClipboardList className="text-orange-600" size={24} />
-    Table 1: Detailed Purok Information
-  </h3>
+          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-6">
+            <ClipboardList className="text-orange-600" size={24} />
+            Table 1: Detailed Purok Information
+          </h3>
 
-  <div className="overflow-x-auto">
-    <table className="w-full">
-      <thead>
-        <tr className="bg-gray-100 border-b-2 border-gray-300">
-          <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Purok</th>
-          <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Population</th>
-          <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Households</th>
-          <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Registered Voters</th>
-        </tr>
-      </thead>
+          <div className="overflow-x-auto bg-white">
+            <table className="w-full bg-white">
+              <thead>
+                <tr className="bg-white border-b-2 border-gray-300">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 bg-white">Purok</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 bg-white">Population</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 bg-white">Households</th>
+                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 bg-white">Registered Voters</th>
+                </tr>
+              </thead>
 
-      <tbody>
-        {purokData.map((purok, index) => (
-          <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-            <td className="px-6 py-4">
-              <span className="font-semibold text-gray-800">{purok.name}</span>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <span className="text-xl font-bold text-gray-900">{purok.population}</span>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <span className="text-xl font-bold text-gray-900">{purok.households}</span>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <span className="text-xl font-bold text-gray-900">{purok.registered_voters}</span>
-            </td>
-          </tr>
-        ))}
+              <tbody className="bg-white">
+                {purokData.map((purok, index) => (
+                  <tr key={index} className="border-b border-gray-200 hover:bg-gray-50 bg-white">
+                    <td className="px-6 py-4 bg-white">
+                      <span className="font-semibold text-gray-800">{purok.name}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center bg-white">
+                      <span className="text-xl font-bold text-gray-900">{purok.population}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center bg-white">
+                      <span className="text-xl font-bold text-gray-900">{purok.households}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center bg-white">
+                      <span className="text-xl font-bold text-gray-900">{purok.registered_voters}</span>
+                    </td>
+                  </tr>
+                ))}
 
-        {/* Total Row */}
-       <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold">
-  <td className="px-6 py-4 text-left text-xl">Total</td>
-  <td className="px-6 py-4 text-center text-xl">
-    {purokData.reduce((sum, p) => sum + p.population, 0)}
-  </td>
-  <td className="px-6 py-4 text-center text-xl">
-    {purokData.reduce((sum, p) => sum + p.households, 0)}
-  </td>
-  <td className="px-6 py-4 text-center text-xl">
-    {purokData.reduce((sum, p) => sum + p.registered_voters, 0)}
-  </td>
-</tr>
-
-
-      </tbody>
-    </table>
-  </div>
-</div>
+                {/* Total Row */}
+                <tr className="bg-white border-t-2 border-gray-300 font-bold">
+                  <td className="px-6 py-4 text-left text-xl bg-white">Total</td>
+                  <td className="px-6 py-4 text-center text-xl bg-white">
+                    {purokData.reduce((sum, p) => sum + p.population, 0)}
+                  </td>
+                  <td className="px-6 py-4 text-center text-xl bg-white">
+                    {purokData.reduce((sum, p) => sum + p.households, 0)}
+                  </td>
+                  <td className="px-6 py-4 text-center text-xl bg-white">
+                    {purokData.reduce((sum, p) => sum + p.registered_voters, 0)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
       </div>
     </div>

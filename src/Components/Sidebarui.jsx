@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiAlertCircle } from "react-icons/fi";
+import { FiAlertCircle, FiMail } from "react-icons/fi";
 import {
   FiArrowLeftCircle,
   FiChevronsRight,
@@ -52,20 +52,23 @@ export const Example = () => {
   const [selected, setSelected] = useState("Dashboard");
   const [pendingComplaintsCount, setPendingComplaintsCount] = useState(0);
   const [pendingValidationsCount, setPendingValidationsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
-  // Listen to Firebase for pending complaints count and pending validations count
+  // Listen to Firebase for pending complaints count, pending validations count, and unread messages
   useEffect(() => {
     const usersRef = ref(db, "users");
     const unsubscribe = onValue(usersRef, (snapshot) => {
       if (!snapshot.exists()) {
         setPendingComplaintsCount(0);
         setPendingValidationsCount(0);
+        setUnreadMessagesCount(0);
         return;
       }
 
       const usersData = snapshot.val();
       let complaintsCount = 0;
       let validationsCount = 0;
+      let messagesCount = 0;
 
       Object.keys(usersData).forEach((userId) => {
         const user = usersData[userId];
@@ -76,6 +79,19 @@ export const Example = () => {
             const complaint = user.userComplaints[complaintId];
             if (complaint.status === "pending") {
               complaintsCount++;
+            }
+
+            // Count unread messages - check if any message from user has read: false
+            if (complaint.chat) {
+              const messages = Object.values(complaint.chat);
+              const hasUnreadMessages = messages.some(msg => 
+                msg.senderId !== "admin" && msg.read === false
+              );
+              
+              // Only increment if there are unread messages
+              if (hasUnreadMessages) {
+                messagesCount++;
+              }
             }
           });
         }
@@ -89,6 +105,7 @@ export const Example = () => {
 
       setPendingComplaintsCount(complaintsCount);
       setPendingValidationsCount(validationsCount);
+      setUnreadMessagesCount(messagesCount);
     });
 
     return () => unsubscribe();
@@ -101,6 +118,7 @@ export const Example = () => {
         setSelected={setSelected} 
         pendingComplaintsCount={pendingComplaintsCount}
         pendingValidationsCount={pendingValidationsCount}
+        unreadMessagesCount={unreadMessagesCount}
       />
       <ExampleContent selected={selected} />
     </div>
@@ -142,9 +160,7 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 20, delay: 0.2 }}
-                className="mx-auto flex items-center justify-center w-14 h-14 rounded-full bg-red-100 mb-4"
               >
-                <FiAlertTriangle className="text-red-600" size={28} />
               </motion.div>
               <motion.h3 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.4 }} className="text-xl font-bold text-gray-900 mb-3">
                 Confirm Logout
@@ -169,7 +185,7 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
 };
 
 // 🟣 Sidebar
-const Sidebar = ({ selected, setSelected, pendingComplaintsCount, pendingValidationsCount }) => {
+const Sidebar = ({ selected, setSelected, pendingComplaintsCount, pendingValidationsCount, unreadMessagesCount }) => {
   const [open, setOpen] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const navigate = useNavigate();
@@ -210,7 +226,7 @@ const Sidebar = ({ selected, setSelected, pendingComplaintsCount, pendingValidat
         <motion.div layout className="space-y-2 flex-1 px-1" transition={{ staggerChildren: 0.1 }}>
           <Option Icon={FiHome} title="Dashboard" selected={selected} setSelected={setSelected} open={open} />
           <Option Icon={FiAlertCircle} title="Complaints" selected={selected} setSelected={setSelected} open={open} notifs={pendingComplaintsCount > 0 ? pendingComplaintsCount : null} />
-          <Option Icon={FiMessageCircle} title="Messages" selected={selected} setSelected={setSelected} open={open} />
+          <Option Icon={FiMail} title="Messages" selected={selected} setSelected={setSelected} open={open} notifs={unreadMessagesCount > 0 ? unreadMessagesCount : null} />
           <Option Icon={FiUser} title="User Validation" selected={selected} setSelected={setSelected} open={open} notifs={pendingValidationsCount > 0 ? pendingValidationsCount : null} />
           <Option Icon={FiBarChart} title="Reports" selected={selected} setSelected={setSelected} open={open} />
           <Option Icon={FiUsers} title="Barangay Officials" selected={selected} setSelected={setSelected} open={open} />

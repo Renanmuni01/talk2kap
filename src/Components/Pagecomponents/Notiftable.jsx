@@ -126,6 +126,38 @@ const Complaintstable = () => {
     return validDate.toLocaleString();
   };
 
+  // UPDATE STATUS IN FIREBASE
+  const updateComplaintStatus = async (complaint, newStatus) => {
+    if (!complaint || !complaint.userId || !complaint.complaintKey) {
+      console.error("Invalid complaint data");
+      return;
+    }
+
+    try {
+      const complaintRef = ref(db, `users/${complaint.userId}/userComplaints/${complaint.complaintKey}`);
+      
+      await update(complaintRef, {
+        status: newStatus
+      });
+
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((c) =>
+          c.complaintKey === complaint.complaintKey
+            ? { ...c, status: newStatus }
+            : c
+        )
+      );
+
+      setSelectedComplaint((prev) => ({ ...prev, status: newStatus }));
+
+      console.log(`Status updated to: ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating status:", error);
+      alert("Failed to update status. Please try again.");
+    }
+  };
+
   return (
     <div className="space-y-4 relative min-h-screen bg-gray-50">
       {/* Background Logo */}
@@ -254,13 +286,13 @@ const Complaintstable = () => {
             onClick={() => setSelectedComplaint(null)}
           >
             <div
-              className="bg-white rounded-2xl w-full max-w-2xl relative shadow-2xl overflow-hidden"
+              className="bg-white rounded-2xl w-full max-w-2xl max-h-[98vh] relative shadow-2xl flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+              {/* Header - Fixed */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white flex-shrink-0">
                 <button
-                  className="absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all"
+                  className="absolute top-4 right-4 text-white hover:bg-red-500 hover:bg-opacity-20 rounded-full p-2 transition-all"
                   onClick={() => setSelectedComplaint(null)}
                 >
                   <FiX size={24} />
@@ -269,7 +301,8 @@ const Complaintstable = () => {
                 <p className="text-blue-100 text-sm">Case ID: {selectedComplaint.complaintKey}</p>
               </div>
 
-              <div className="p-6 space-y-6">
+              {/* Scrollable Content */}
+              <div className="p-6 space-y-6 overflow-y-auto flex-1">
                 {/* Status & Urgency */}
                 <div className={`p-4 rounded-lg ${getStatusDisplay(selectedComplaint.status).color} flex items-center justify-between`}>
                   <div className="flex items-center gap-2">
@@ -362,58 +395,39 @@ const Complaintstable = () => {
                     <p className="text-gray-700 leading-relaxed">{selectedComplaint.message}</p>
                   </div>
                 </div>
+              </div>
 
-                {/* Action Button */}
-                <div className="border-t pt-4">
-                  <button
-                    className={`w-full py-3 rounded-lg text-white font-semibold text-lg transition 
-                      ${
-                        selectedComplaint.status === "pending"
-                          ? "bg-blue-600 hover:bg-blue-700"
-                          : selectedComplaint.status === "in-progress"
-                          ? "bg-green-600 hover:bg-green-700"
-                          : "bg-gray-400 cursor-not-allowed"
-                      }`}
-                    disabled={selectedComplaint.status === "resolved"}
-                    onClick={async () => {
-                      if (!selectedComplaint) return;
+              {/* Action Button - Fixed at Bottom */}
+              <div className="border-t p-6 flex-shrink-0">
+                <button
+                  className={`w-full py-3 rounded-lg text-white font-semibold text-lg transition 
+                    ${
+                      selectedComplaint.status === "pending"
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : selectedComplaint.status === "in-progress"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-gray-400 cursor-not-allowed"
+                    }`}
+                  disabled={selectedComplaint.status === "resolved"}
+                  onClick={() => {
+                    if (!selectedComplaint) return;
 
-                      const nextStatus =
-                        selectedComplaint.status === "pending"
-                          ? "in-progress"
-                          : selectedComplaint.status === "in-progress"
-                          ? "resolved"
-                          : "resolved";
+                    const nextStatus =
+                      selectedComplaint.status === "pending"
+                        ? "in-progress"
+                        : selectedComplaint.status === "in-progress"
+                        ? "resolved"
+                        : "resolved";
 
-                      const complaintRef = ref(
-                        db,
-                        `users/${selectedComplaint.userId}/userComplaints/${selectedComplaint.complaintKey}`
-                      );
-
-                      try {
-                        await update(complaintRef, { status: nextStatus });
-
-                        setNotifications((prev) =>
-                          prev.map((c) =>
-                            c.complaintKey === selectedComplaint.complaintKey
-                              ? { ...c, status: nextStatus }
-                              : c
-                          )
-                        );
-
-                        setSelectedComplaint((prev) => ({ ...prev, status: nextStatus }));
-                      } catch (error) {
-                        console.error("Error updating status:", error);
-                      }
-                    }}
-                  >
-                    {selectedComplaint.status === "pending"
-                      ? "Approve"
-                      : selectedComplaint.status === "in-progress"
-                      ? "Resolve"
-                      : "Resolved"}
-                  </button>
-                </div>
+                    updateComplaintStatus(selectedComplaint, nextStatus);
+                  }}
+                >
+                  {selectedComplaint.status === "pending"
+                    ? "Approve"
+                    : selectedComplaint.status === "in-progress"
+                    ? "Resolve"
+                    : "Resolved"}
+                </button>
               </div>
             </div>
           </div>

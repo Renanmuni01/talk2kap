@@ -132,7 +132,7 @@ const Validations = () => {
                 >
                   <td className="px-6 py-4 text-gray-900">{user.complainant}</td>
                   <td className="px-6 py-4 text-gray-900">{user.number || '-'}</td>
-                  <td className="px-6 py-4 text-gray-900">{user.purok || '-'}</td>
+                  <td className="px-6 py-4 text-gray-900">Purok {user.purok || '-'}</td>
                   <td className="px-6 py-4 text-gray-900">{user.address || '-'}</td>
                   <td className="px-6 py-4 text-gray-900">{user.id_verification ? 'Sent' : '-'}</td>
                   <td className="px-6 py-4">

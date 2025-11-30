@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FiUser, FiMail, FiCheck, FiX, FiSearch, FiSend, FiMapPin, FiFileText, FiMessageSquare } from "react-icons/fi";
+import { FiUser, FiMail, FiCheck, FiX, FiSearch, FiSend, FiMapPin, FiFileText, FiMessageSquare, FiBell } from "react-icons/fi";
 import { ref, onValue, push, update } from "firebase/database";
 import { db } from "../../firebaseConfig";
 
@@ -30,6 +30,18 @@ const MessageTable = () => {
               // Get last message
               const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
 
+              // Check if there are any unread messages from user (where read is false)
+              // When user sends new message, it should have read: false
+              // When admin views it, it becomes read: true
+              const hasUnreadMessages = messages.some(msg => 
+                msg.senderId !== "admin" && msg.read === false
+              );
+
+              // Count unread messages
+              const unreadCount = messages.filter(msg => 
+                msg.senderId !== "admin" && msg.read === false
+              ).length;
+
               convos.push({
                 id: complaintId,
                 userId,
@@ -39,22 +51,24 @@ const MessageTable = () => {
                 issueType: complaint.type || "—",
                 description: complaint.message || "—",
                 messages,
-                status: complaint.status || "unread",
+                read: hasUnreadMessages ? "false" : "true",
+                status: hasUnreadMessages ? "unread" : "read",
                 lastMessage: lastMsg?.message || "No messages yet",
                 hasMessages: messages.length > 0,
+                unreadCount: unreadCount,
               });
             });
           }
         });
       }
       
-      // Sort: conversations with messages first, then by status (unread first)
+      // Sort: conversations with unread messages first, then by messages
       convos.sort((a, b) => {
-        if (a.hasMessages !== b.hasMessages) {
-          return b.hasMessages - a.hasMessages; // true (1) comes before false (0)
-        }
         if (a.status !== b.status) {
           return a.status === "unread" ? -1 : 1; // unread comes first
+        }
+        if (a.hasMessages !== b.hasMessages) {
+          return b.hasMessages - a.hasMessages; // true (1) comes before false (0)
         }
         return 0;
       });
@@ -80,41 +94,72 @@ const MessageTable = () => {
   };
 
   const openConversation = async (conversation) => {
-    // Mark as read when opening
-    if (conversation.status === "unread") {
-      const complaintRef = ref(db, `users/${conversation.userId}/userComplaints/${conversation.complaintId}`);
-      
-      try {
-        await update(complaintRef, { status: "read" });
-        
-        // Update local state
-        setConversations(prev => {
-          const updated = prev.map(c => 
-            c.complaintId === conversation.complaintId 
-              ? { ...c, status: "read" }
-              : c
-          );
-          
-          // Re-sort after status update
-          return updated.sort((a, b) => {
-            if (a.hasMessages !== b.hasMessages) {
-              return b.hasMessages - a.hasMessages;
-            }
-            if (a.status !== b.status) {
-              return a.status === "unread" ? -1 : 1;
-            }
-            return 0;
-          });
+    setSelectedConversation(conversation);
+
+    // Mark all user messages as read in Firebase
+    const { userId, complaintId, messages } = conversation;
+    
+    try {
+      // Find all unread messages from user (not admin)
+      const unreadMessages = messages.filter(msg => 
+        msg.senderId !== "admin" && msg.read === false
+      );
+
+      // Update each unread message to read: true
+      for (const msg of unreadMessages) {
+        const messageRef = ref(db, `users/${userId}/userComplaints/${complaintId}/chat/${msg.id}`);
+        await update(messageRef, { read: true });
+      }
+
+      // Update local state
+      setConversations(prev => {
+        const updated = prev.map(c => {
+          if (c.complaintId === complaintId) {
+            // Mark all messages as read
+            const updatedMessages = c.messages.map(m => ({
+              ...m,
+              read: m.senderId === "admin" ? m.read : true
+            }));
+            
+            return {
+              ...c,
+              messages: updatedMessages,
+              read: "true",
+              status: "read",
+              unreadCount: 0
+            };
+          }
+          return c;
         });
         
-        // Set selected conversation with updated status
-        setSelectedConversation({ ...conversation, status: "read" });
-      } catch (error) {
-        console.error("Error updating status:", error);
-        setSelectedConversation(conversation);
-      }
-    } else {
-      setSelectedConversation(conversation);
+        // Re-sort after status update
+        return updated.sort((a, b) => {
+          if (a.status !== b.status) {
+            return a.status === "unread" ? -1 : 1;
+          }
+          if (a.hasMessages !== b.hasMessages) {
+            return b.hasMessages - a.hasMessages;
+          }
+          return 0;
+        });
+      });
+
+      // Update selected conversation
+      const updatedMessages = conversation.messages.map(m => ({
+        ...m,
+        read: m.senderId === "admin" ? m.read : true
+      }));
+      
+      setSelectedConversation({
+        ...conversation,
+        messages: updatedMessages,
+        read: "true",
+        status: "read",
+        unreadCount: 0
+      });
+      
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
     }
   };
 
@@ -128,6 +173,7 @@ const MessageTable = () => {
       senderId: "admin",
       message: reply,
       timestamp: new Date().toLocaleString(),
+      read: false, // Admin messages start as unread (false) so user knows there's a new reply
     };
 
     await push(chatRef, newMessage);
@@ -256,7 +302,19 @@ const MessageTable = () => {
                     className="border-b border-gray-200 hover:bg-gray-50 transition cursor-pointer" 
                     onClick={()=>openConversation(c)}
                   >
-                    <td className="px-6 py-4">{c.complainant}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {c.complainant}
+                        {c.unreadCount > 0 && (
+                          <span className="relative flex items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-5 w-5 rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs font-bold items-center justify-center">
+                              {c.unreadCount}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">Purok {c.purok}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getIssueColor(c.issueType)}`}>
@@ -264,7 +322,14 @@ const MessageTable = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 max-w-xs truncate" title={c.description}>{c.description}</td>
-                    <td className="px-6 py-4 max-w-xs truncate" title={c.lastMessage}>{c.lastMessage}</td>
+                    <td className="px-6 py-4 max-w-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate" title={c.lastMessage}>{c.lastMessage}</span>
+                        {c.status === "unread" && (
+                          <FiBell className="text-red-500 animate-pulse flex-shrink-0" size={16} />
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
                         {status.text}
@@ -289,13 +354,13 @@ const MessageTable = () => {
             onClick={() => setSelectedConversation(null)}
           >
             <div 
-              className="bg-white rounded-2xl w-full max-w-3xl relative shadow-2xl overflow-hidden"
+              className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] relative shadow-2xl flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white relative">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white relative flex-shrink-0">
                 <button 
-                  className="absolute top-4 right-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all" 
+                  className="absolute top-4 right-4 text-white hover:bg-red-500 hover:bg-opacity-20 rounded-full p-2 transition-all" 
                   onClick={()=>setSelectedConversation(null)}
                 >
                   <FiX size={24} />
@@ -307,7 +372,7 @@ const MessageTable = () => {
               </div>
 
               {/* Complaint Details */}
-              <div className="p-6 bg-gray-50 border-b">
+              <div className="p-6 bg-gray-50 border-b flex-shrink-0">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-start gap-3">
                     <div className="bg-green-100 p-2 rounded-lg">
@@ -350,8 +415,8 @@ const MessageTable = () => {
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto bg-white/50">
+              {/* Messages - Scrollable */}
+              <div className="p-6 space-y-4 overflow-y-auto bg-white/50 flex-1">
                 {selectedConversation.messages.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <FiMessageSquare size={48} className="mx-auto mb-2 opacity-30" />
@@ -362,9 +427,16 @@ const MessageTable = () => {
                     <div key={i} className={`flex ${m.senderId==="admin"?"justify-end":"justify-start"}`}>
                       <div className={`p-3 rounded-2xl max-w-sm shadow-sm ${m.senderId==="admin"?"bg-indigo-600 text-white":"bg-gray-200 text-gray-900"}`}>
                         <p className="text-sm">{m.message}</p>
-                        <p className={`text-xs mt-1 ${m.senderId==="admin"?"text-indigo-200":"text-gray-500"}`}>
-                          {m.timestamp}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <p className={`text-xs ${m.senderId==="admin"?"text-indigo-200":"text-gray-500"}`}>
+                            {m.timestamp}
+                          </p>
+                          {m.senderId !== "admin" && (
+                            <span className={`text-xs ${m.read ? "text-green-600" : "text-red-600"} font-semibold`}>
+                              {m.read ? "✓✓ Read" : "✓ Sent"}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -373,7 +445,7 @@ const MessageTable = () => {
               </div>
 
               {/* Reply Box */}
-              <div className="p-6 border-t flex gap-2 bg-white">
+              <div className="p-6 border-t flex gap-2 bg-white flex-shrink-0">
                 <textarea
                   rows={3}
                   value={reply}
