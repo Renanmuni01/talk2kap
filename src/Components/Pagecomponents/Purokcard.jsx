@@ -252,7 +252,7 @@ const PurokInfo = ({ purokNumber, onBack, purokStats }) => {
         3: { name: "Purok 3", description: "Information about Purok 3", residents: 2894, complaints: 24, urgent: 5, nonUrgent: 19 },
         4: { name: "Purok 4", description: "Information about Purok 4", residents: 1553, complaints: 13, urgent: 3, nonUrgent: 10 },
         5: { name: "Purok 5", description: "Information about Purok 5", residents: 3481, complaints: 22, urgent: 2, nonUrgent: 20 },
-        6: { name: "Purok 6", description: "Information about Purok 6", residents: 3481, complaints: 25, urgent: 5, nonUrgent: 20 }
+        6: { name: "Purok 6", description: "Information about Purok 6", residents: 3074, complaints: 25, urgent: 5, nonUrgent: 20 }
       };
 
       const baseInfo = basePurokInfo[purokNumber];

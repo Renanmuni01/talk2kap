@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   FiAlertTriangle, FiClock, FiSearch, FiX, FiUser, FiMapPin,
   FiFileText, FiCalendar, FiCheckCircle, FiHome
@@ -13,6 +13,19 @@ const Complaintstable = () => {
   const [notifications, setNotifications] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackAvailable, setFeedbackAvailable] = useState({});
+  // Persisted list of dismissed feedback keys (stored in localStorage)
+  const [dismissedFeedback, setDismissedFeedback] = useState(() => {
+    try {
+      const raw = localStorage.getItem('dismissedFeedback') || '[]';
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) {
+      return new Set();
+    }
+  });
 
   useEffect(() => {
     const usersRef = ref(db, "users");
@@ -24,10 +37,14 @@ const Complaintstable = () => {
 
       const usersData = snapshot.val();
       const allComplaints = [];
+      const feedbackMap = {};
 
       Object.keys(usersData).forEach((userId) => {
         const user = usersData[userId];
-        const fullName = `${user.firstName || ''} ${user.middleName || ''} ${user.lastName || ''}`.trim() || "Anonymous";
+
+        // Compose full name, but do not use 'Anonymous' if empty
+        let fullName = `${user.firstName || ''} ${user.middleName || ''} ${user.lastName || ''}`.trim();
+        if (!fullName) fullName = '';
 
         if (user.userComplaints) {
           Object.keys(user.userComplaints).forEach((complaintId) => {
@@ -35,8 +52,8 @@ const Complaintstable = () => {
               complaintKey: complaintId,
               userId,
               name: fullName,
-              purok: user.incidentPurok || "—",
-              address: user.address || "—",
+              purok: user.incidentPurok || "â€”",
+              address: user.address || "â€”",
               evidencePhoto: user.userComplaints[complaintId].evidencePhoto || null,
               ...user.userComplaints[complaintId],
             });
@@ -52,6 +69,29 @@ const Complaintstable = () => {
       });
 
       setNotifications(allComplaints);
+
+      // Check for feedback on all resolved complaints
+      const feedbackRef = ref(db, "complaintFeedback");
+      onValue(feedbackRef, (feedbackSnapshot) => {
+        const feedbackData = feedbackSnapshot.val();
+        if (feedbackData) {
+          Object.keys(feedbackData).forEach((complaintId) => {
+            if (feedbackData[complaintId].feedbackMessage) {
+              // only mark available if not dismissed by the user (stored in localStorage)
+              try {
+                const raw = localStorage.getItem('dismissedFeedback') || '[]';
+                const dismissedArr = JSON.parse(raw);
+                if (!Array.isArray(dismissedArr) || dismissedArr.indexOf(complaintId) === -1) {
+                  feedbackMap[complaintId] = true;
+                }
+              } catch (e) {
+                feedbackMap[complaintId] = true;
+              }
+            }
+          });
+        }
+        setFeedbackAvailable(feedbackMap);
+      }, { onlyOnce: true });
     });
 
     return () => unsubscribe();
@@ -118,7 +158,7 @@ const Complaintstable = () => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp) return "—";
+    if (!timestamp) return "â€”";
     const [datePart, timePart] = timestamp.split(", ");
     const [day, month, year] = datePart.split("/");
     const validDate = new Date(`${year}-${month}-${day}T${timePart}`);
@@ -258,7 +298,19 @@ const Complaintstable = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">Purok {n.incidentPurok}</td>
-                    <td className="px-6 py-4">{n.name}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {n.name}
+                        {n.status === "resolved" && feedbackAvailable[n.complaintKey] && (
+                          <span className="relative flex items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 text-white text-xs font-bold items-center justify-center shadow-md">
+                              â—
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getIssueColor(n.type)}`}>{n.type}</span>
                     </td>
@@ -395,6 +447,44 @@ const Complaintstable = () => {
                     <p className="text-gray-700 leading-relaxed">{selectedComplaint.message}</p>
                   </div>
                 </div>
+
+                {/* View Feedback Button for resolved complaints */}
+                {selectedComplaint.status === "resolved" && (
+                  <div className="pt-4">
+                    <button
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
+                      onClick={async () => {
+                        const key = selectedComplaint?.complaintKey;
+                        if (!key) return;
+
+                        // Fetch feedback from Firebase
+                        const feedbackRef = ref(db, `complaintFeedback/${key}/feedbackMessage`);
+                        onValue(feedbackRef, (snapshot) => {
+                          const feedback = snapshot.val();
+                          setFeedbackMessage(feedback || "No feedback yet.");
+                          setShowFeedbackModal(true);
+                        }, { onlyOnce: true });
+
+                        // Persist dismissal so the badge is removed permanently (UI only)
+                        setDismissedFeedback(prev => {
+                          const s = new Set(prev);
+                          s.add(key);
+                          try { localStorage.setItem('dismissedFeedback', JSON.stringify(Array.from(s))); } catch (e) {}
+                          return s;
+                        });
+
+                        // Remove badge from current feedbackAvailable state immediately
+                        setFeedbackAvailable((prev) => {
+                          const updated = { ...prev };
+                          delete updated[key];
+                          return updated;
+                        });
+                      }}
+                    >
+                      View Feedback
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Action Button - Fixed at Bottom */}
@@ -433,6 +523,35 @@ const Complaintstable = () => {
           </div>
         )}
 
+        {/* FEEDBACK MODAL */}
+        {showFeedbackModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[9999] backdrop-blur-sm" onClick={() => setShowFeedbackModal(false)}>
+            <div className="bg-gradient-to-br from-indigo-100 to-white rounded-2xl shadow-2xl p-0 max-w-md w-full relative animate-fadeInUp" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-6 pt-6 pb-2 border-b border-indigo-100">
+                <div className="flex items-center gap-2">
+                  <span className="bg-indigo-600 text-white rounded-full p-2 shadow-lg"><FiCheckCircle size={22} /></span>
+                  <h3 className="text-xl font-bold text-indigo-700">Feedback</h3>
+                </div>
+                <button className="text-gray-400 hover:text-indigo-600 transition-colors p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-300" onClick={() => setShowFeedbackModal(false)} title="Close">
+                  <FiX size={24} />
+                </button>
+              </div>
+              <div className="px-6 py-6">
+                <p className="text-gray-700 text-base whitespace-pre-line leading-relaxed mb-2">
+                  {feedbackMessage}
+                </p>
+              </div>
+            </div>
+            <style>{`
+              @keyframes fadeInUp {
+                from { opacity: 0; transform: translateY(40px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              .animate-fadeInUp { animation: fadeInUp 0.35s cubic-bezier(.4,0,.2,1) both; }
+            `}</style>
+          </div>
+        )}
+
         {/* FULL SCREEN IMAGE PREVIEW */}
         {previewImage && (
           <div
@@ -448,7 +567,7 @@ const Complaintstable = () => {
               className="absolute top-6 right-6 text-white text-3xl font-bold hover:scale-110 transition-transform"
               onClick={() => setPreviewImage(null)}
             >
-              ✕
+              âœ•
             </button>
           </div>
         )}

@@ -13,7 +13,7 @@ const purokData = [
   { name: 'P3', population: 2894, households: 584, registered_voters: 1405 },
   { name: 'P4', population: 1553, households: 463, registered_voters: 754 },
   { name: 'P5', population: 3481, households: 508, registered_voters: 1690 },
-  { name: 'P6', population: 3481, households: 742, registered_voters: 1493 }
+  { name: 'P6', population: 3074, households: 742, registered_voters: 1493 }
 ];
 
 const pieData = purokData.map(p => ({ name: p.name, value: p.population }));
