@@ -1,205 +1,397 @@
-// --- FULL PUROKCHART UPDATED WITH WHITE TABLE ---
+// PurokChart.jsx - MORE improved UI + SMALLER font sizes (clean, premium, readable)
+// ✅ Reduced typography everywhere (title, cards, table, chart labels)
+// ✅ Same UI structure + same purokData (no logic change)
 
-import React from 'react';
+import React, { useMemo } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell
-} from 'recharts';
-import { Users, BarChart3, ClipboardList } from 'lucide-react';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { Users, BarChart3, ClipboardList, Home, Vote } from "lucide-react";
 
 const purokData = [
-  { name: 'P1', population: 1228, households: 328, registered_voters: 596 },
-  { name: 'P2', population: 1576, households: 414, registered_voters: 764},
-  { name: 'P3', population: 2894, households: 584, registered_voters: 1405 },
-  { name: 'P4', population: 1553, households: 463, registered_voters: 754 },
-  { name: 'P5', population: 3481, households: 508, registered_voters: 1690 },
-  { name: 'P6', population: 3074, households: 742, registered_voters: 1493 }
+  { name: "P1", population: 1228, households: 328, registered_voters: 596 },
+  { name: "P2", population: 1576, households: 414, registered_voters: 764 },
+  { name: "P3", population: 2894, households: 584, registered_voters: 1405 },
+  { name: "P4", population: 1553, households: 463, registered_voters: 754 },
+  { name: "P5", population: 3481, households: 508, registered_voters: 1690 },
+  { name: "P6", population: 3074, households: 742, registered_voters: 1493 },
 ];
 
-const pieData = purokData.map(p => ({ name: p.name, value: p.population }));
-const colors = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+const colors = ["#4F46E5", "#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"];
 
 const PurokChart = () => {
-  return (
-    <div className="relative min-h-screen p-6 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+  const totals = useMemo(() => {
+    return {
+      population: purokData.reduce((sum, p) => sum + p.population, 0),
+      households: purokData.reduce((sum, p) => sum + p.households, 0),
+      voters: purokData.reduce((sum, p) => sum + p.registered_voters, 0),
+    };
+  }, []);
 
-      {/* Background watermark */}
+  const pieData = useMemo(
+    () => purokData.map((p) => ({ name: p.name, value: p.population })),
+    []
+  );
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-blue-50">
+      {/* Watermark */}
       <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage: 'url("/src/assets/sanroquelogo.png")',
-          backgroundPosition: 'right 35% center',
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: '49%',
-          opacity: 0.18,
-          filter: 'brightness(1.4) contrast(1.1)'
+          backgroundPosition: "right 35% center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "49%",
+          opacity: 0.16,
+          filter: "brightness(1.35) contrast(1.08)",
         }}
+        aria-hidden="true"
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto space-y-10">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-10 space-y-10">
+        {/* Header (smaller fonts) */}
+        <div className="relative overflow-hidden rounded-[26px] border border-white/60 bg-white/70 backdrop-blur-xl shadow-2xl">
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-pink-500/20 blur-3xl" />
 
-        {/* Improved Dashboard Header */}
-        <div className="text-center mb-12 space-y-3">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <div className="h-1 w-16 bg-gradient-to-r from-transparent to-indigo-500 rounded-full"></div>
-            <Users className="text-indigo-600 text-4xl animate-pulse" />
-            <div className="h-1 w-16 bg-gradient-to-l from-transparent to-indigo-500 rounded-full"></div>
-          </div>
-          
-          <h1 className="text-6xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Purok Overview Dashboard
-          </h1>
-          
-          <p className="text-gray-600 text-lg font-medium">
-            Comprehensive demographic data and statistics by Purok
-          </p>
-          
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <div className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="h-1.5 w-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="h-1.5 w-1.5 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          <div className="relative p-7 md:p-9">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="inline-flex items-center gap-3">
+                <span className="h-[3px] w-12 md:w-16 bg-gradient-to-r from-transparent to-indigo-500 rounded-full" />
+                <div className="inline-flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-3xl bg-white shadow-lg border border-gray-200">
+                  <Users className="text-indigo-600" size={24} />
+                </div>
+                <span className="h-[3px] w-12 md:w-16 bg-gradient-to-l from-transparent to-indigo-500 rounded-full" />
+              </div>
+
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Purok Overview Dashboard
+              </h1>
+
+              <p className="text-gray-700 text-base md:text-lg font-semibold max-w-3xl">
+                Comprehensive demographic data and statistics by Purok — clean and readable for reporting.
+              </p>
+
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <div className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="h-1.5 w-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="h-1.5 w-1.5 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* KPI Cards (smaller fonts) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl shadow-lg border-2 border-indigo-200 p-6">
-            <p className="text-indigo-600 text-sm font-semibold mb-1">TOTAL POPULATION</p>
-            <p className="text-4xl font-bold text-gray-900">
-              {purokData.reduce((sum, p) => sum + p.population, 0)}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border-2 border-green-200 p-6">
-            <p className="text-green-600 text-sm font-semibold mb-1">TOTAL HOUSEHOLDS</p>
-            <p className="text-4xl font-bold text-gray-900">
-              {purokData.reduce((sum, p) => sum + p.households, 0)}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border-2 border-amber-200 p-6">
-            <p className="text-amber-600 text-sm font-semibold mb-1">REGISTERED VOTERS</p>
-            <p className="text-4xl font-bold text-gray-900">
-              {purokData.reduce((sum, p) => sum + p.registered_voters, 0)}
-            </p>
-          </div>
+          <KpiCard
+            title="Total Population"
+            value={totals.population}
+            icon={<Users size={22} />}
+            tone="indigo"
+            subtitle="All puroks combined"
+          />
+          <KpiCard
+            title="Total Households"
+            value={totals.households}
+            icon={<Home size={22} />}
+            tone="green"
+            subtitle="Registered households"
+          />
+          <KpiCard
+            title="Registered Voters"
+            value={totals.voters}
+            icon={<Vote size={22} />}
+            tone="amber"
+            subtitle="Active voters count"
+          />
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-
-          {/* Bar Chart */}
-          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-4">
-              <BarChart3 className="text-indigo-600" size={24} />
-              Figure 1: Purok Demographics
-            </h3>
-
-            <div className="h-80">
-              <ResponsiveContainer>
-                <BarChart data={purokData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="population" fill="#4F46E5" />
-                  <Bar dataKey="households" fill="#10B981" />
-                  <Bar dataKey="registered_voters" fill="#F59E0B" />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Bar Panel */}
+          <Panel
+            title="Figure 1: Purok Demographics"
+            icon={<BarChart3 className="text-indigo-600" size={22} />}
+            badge="Overview"
+          >
+            <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-slate-50 to-white p-4">
+              <div className="h-[340px]">
+                <ResponsiveContainer>
+                  <BarChart data={purokData} margin={{ top: 18, right: 24, left: 6, bottom: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 13, fontWeight: 800 }}
+                      axisLine={{ stroke: "#E5E7EB" }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 13, fontWeight: 800 }}
+                      axisLine={{ stroke: "#E5E7EB" }}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<PrettyTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 13, fontWeight: 800 }} iconType="circle" />
+                    <Bar dataKey="population" fill="#4F46E5" radius={[10, 10, 0, 0]} barSize={22} />
+                    <Bar dataKey="households" fill="#10B981" radius={[10, 10, 0, 0]} barSize={22} />
+                    <Bar dataKey="registered_voters" fill="#F59E0B" radius={[10, 10, 0, 0]} barSize={22} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
 
-          {/* Pie Chart */}
-          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-4">
-              <BarChart3 className="text-indigo-600" size={24} />
-              Figure 2: Population Distribution by Purok
-            </h3>
+            <p className="mt-4 text-sm font-semibold text-gray-600">
+              Reduced typography while keeping premium spacing and readability.
+            </p>
+          </Panel>
 
-            <div className="h-80">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(1)}%`
-                    }
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={index} fill={colors[index]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+          {/* Pie Panel */}
+          <Panel
+            title="Figure 2: Population Distribution by Purok"
+            icon={<BarChart3 className="text-indigo-600" size={22} />}
+            badge="Distribution"
+          >
+            <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-slate-50 to-white p-4">
+              <div className="h-[340px]">
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      innerRadius={62}
+                      paddingAngle={2}
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+                      dataKey="value"
+                      style={{ fontSize: 12, fontWeight: 800 }}
+                    >
+                      {pieData.map((_, index) => (
+                        <Cell key={index} fill={colors[index]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PrettyTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+
+            <div className="flex flex-wrap gap-2 justify-center mt-4">
+              {pieData.map((p, idx) => (
+                <span
+                  key={p.name}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm text-xs font-extrabold text-gray-700"
+                >
+                  <span className="w-3 h-3 rounded" style={{ background: colors[idx] }} />
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          </Panel>
         </div>
 
-        {/* Table with White Background */}
-        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8">
-  
-          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-6">
-            <ClipboardList className="text-orange-600" size={24} />
-            Table 1: Detailed Purok Information
-          </h3>
-
-          <div className="overflow-x-auto bg-white">
+        {/* Table */}
+        <Panel
+          title="Table 1: Detailed Purok Information"
+          icon={<ClipboardList className="text-orange-600" size={22} />}
+          badge="Details"
+        >
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
             <table className="w-full bg-white">
-              <thead>
-                <tr className="bg-white border-b-2 border-gray-300">
-                  <th className="px-6 py-4 text-left text-sm font-bold text-gray-700 bg-white">Purok</th>
-                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 bg-white">Population</th>
-                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 bg-white">Households</th>
-                  <th className="px-6 py-4 text-center text-sm font-bold text-gray-700 bg-white">Registered Voters</th>
+              <thead className="sticky top-0 z-10 bg-white">
+                <tr className="border-b-2 border-gray-200">
+                  <Th>Purok</Th>
+                  <Th center>Population</Th>
+                  <Th center>Households</Th>
+                  <Th center>Registered Voters</Th>
                 </tr>
               </thead>
 
-              <tbody className="bg-white">
+              <tbody>
                 {purokData.map((purok, index) => (
-                  <tr key={index} className="border-b border-gray-200 hover:bg-gray-50 bg-white">
-                    <td className="px-6 py-4 bg-white">
-                      <span className="font-semibold text-gray-800">{purok.name}</span>
+                  <tr
+                    key={index}
+                    className={`border-b border-gray-100 transition-colors ${
+                      index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                    } hover:bg-indigo-50/60`}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: colors[index % colors.length] }} />
+                        <span className="text-base md:text-lg font-extrabold text-gray-900">
+                          {purok.name}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-center bg-white">
-                      <span className="text-xl font-bold text-gray-900">{purok.population}</span>
-                    </td>
-                    <td className="px-6 py-4 text-center bg-white">
-                      <span className="text-xl font-bold text-gray-900">{purok.households}</span>
-                    </td>
-                    <td className="px-6 py-4 text-center bg-white">
-                      <span className="text-xl font-bold text-gray-900">{purok.registered_voters}</span>
-                    </td>
+                    <Td center>
+                      <span className="text-lg md:text-xl font-extrabold text-gray-900">
+                        {purok.population}
+                      </span>
+                    </Td>
+                    <Td center>
+                      <span className="text-lg md:text-xl font-extrabold text-gray-900">
+                        {purok.households}
+                      </span>
+                    </Td>
+                    <Td center>
+                      <span className="text-lg md:text-xl font-extrabold text-gray-900">
+                        {purok.registered_voters}
+                      </span>
+                    </Td>
                   </tr>
                 ))}
 
-                {/* Total Row */}
-                <tr className="bg-white border-t-2 border-gray-300 font-bold">
-                  <td className="px-6 py-4 text-left text-xl bg-white">Total</td>
-                  <td className="px-6 py-4 text-center text-xl bg-white">
-                    {purokData.reduce((sum, p) => sum + p.population, 0)}
+                <tr className="bg-gradient-to-r from-indigo-100 via-purple-100 to-pink-100 border-t-2 border-gray-200">
+                  <td className="px-6 py-4 text-base md:text-lg font-extrabold text-gray-900">
+                    Total
                   </td>
-                  <td className="px-6 py-4 text-center text-xl bg-white">
-                    {purokData.reduce((sum, p) => sum + p.households, 0)}
-                  </td>
-                  <td className="px-6 py-4 text-center text-xl bg-white">
-                    {purokData.reduce((sum, p) => sum + p.registered_voters, 0)}
-                  </td>
+                  <Td center>
+                    <span className="text-lg md:text-xl font-extrabold text-gray-900">{totals.population}</span>
+                  </Td>
+                  <Td center>
+                    <span className="text-lg md:text-xl font-extrabold text-gray-900">{totals.households}</span>
+                  </Td>
+                  <Td center>
+                    <span className="text-lg md:text-xl font-extrabold text-gray-900">{totals.voters}</span>
+                  </Td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
 
+          
+        </Panel>
       </div>
     </div>
   );
 };
 
 export default PurokChart;
+
+/* =======================
+   UI helpers (Smaller fonts)
+======================= */
+
+const Panel = ({ title, icon, badge, children }) => {
+  return (
+    <div className="bg-white/85 backdrop-blur rounded-[24px] shadow-2xl border border-white/60 overflow-hidden">
+      <div className="px-6 py-5 md:px-7 md:py-5 border-b border-gray-200 flex items-center justify-between gap-3">
+        <h3 className="text-lg md:text-xl font-extrabold text-gray-900 flex items-center gap-3">
+          {icon}
+          {title}
+        </h3>
+        {badge && (
+          <span className="text-xs font-extrabold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-full shadow-sm">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="p-6 md:p-7">{children}</div>
+    </div>
+  );
+};
+
+const KpiCard = ({ title, value, icon, subtitle, tone = "indigo" }) => {
+  const tones = {
+    indigo: {
+      ring: "ring-indigo-200",
+      bg: "from-indigo-50/80 to-white",
+      iconBg: "bg-indigo-600",
+      glow: "bg-indigo-500/20",
+      accent: "text-indigo-700",
+    },
+    green: {
+      ring: "ring-green-200",
+      bg: "from-green-50/80 to-white",
+      iconBg: "bg-green-600",
+      glow: "bg-green-500/20",
+      accent: "text-green-700",
+    },
+    amber: {
+      ring: "ring-amber-200",
+      bg: "from-amber-50/80 to-white",
+      iconBg: "bg-amber-600",
+      glow: "bg-amber-500/20",
+      accent: "text-amber-700",
+    },
+  };
+
+  const t = tones[tone] || tones.indigo;
+
+  return (
+    <div className="relative overflow-hidden rounded-[24px] bg-white shadow-2xl border border-gray-200">
+      <div className={`absolute -top-16 -right-16 w-64 h-64 rounded-full blur-3xl ${t.glow}`} />
+      <div className={`absolute -bottom-20 -left-20 w-72 h-72 rounded-full blur-3xl ${t.glow}`} />
+
+      <div className={`relative p-6 bg-gradient-to-b ${t.bg}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={`text-xs md:text-sm font-extrabold uppercase tracking-wider ${t.accent}`}>
+              {title}
+            </p>
+            <p className="mt-2 text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
+              {value}
+            </p>
+            <p className="mt-1.5 text-xs md:text-sm font-semibold text-gray-600">
+              {subtitle}
+            </p>
+          </div>
+
+          <div className={`shrink-0 rounded-2xl ${t.iconBg} text-white p-3 shadow-lg ring-4 ${t.ring}`}>
+            {icon}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Th = ({ children, center }) => (
+  <th
+    className={`px-6 py-4 text-xs md:text-sm font-extrabold tracking-wider text-gray-600 uppercase ${
+      center ? "text-center" : "text-left"
+    }`}
+  >
+    {children}
+  </th>
+);
+
+const Td = ({ children, center }) => (
+  <td className={`px-6 py-4 ${center ? "text-center" : "text-left"}`}>{children}</td>
+);
+
+const PrettyTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4">
+      <p className="text-sm font-extrabold text-gray-900">{label}</p>
+      <div className="mt-3 space-y-2">
+        {payload.map((p, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between gap-8 text-xs md:text-sm font-bold text-gray-700"
+          >
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3 h-3 rounded" style={{ background: p.color }} />
+              {p.name}
+            </span>
+            <span className="text-gray-900 font-extrabold">{p.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

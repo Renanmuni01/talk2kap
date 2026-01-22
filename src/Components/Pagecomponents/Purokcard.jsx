@@ -1,83 +1,96 @@
-// HoverDevCards.jsx - Firebase-Connected Dashboard with Base Data
-import React, { useState, useEffect } from "react";
-import { FiMail, FiArrowLeft, FiAlertTriangle, FiClock, FiGrid, FiMapPin, FiTrendingUp } from "react-icons/fi";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList } from "recharts";
+// HoverDevCards.jsx - Firebase ONLY (no hardcoded complaint counts)
+// ✅ Removed basePurokStats (no hardcoded complaint data)
+// ✅ Counts ALL complaints from Firebase Realtime Database (users/*/userComplaints/*)
+// ✅ Uses SAME tally logic as ReportAnalytics: urgent = label === 'urgent', nonUrgent = everything else
+// ✅ Uses incidentPurok from the complaint (1–6)
+
+// NOTE (important for matching totals):
+// If your ReportAnalytics still adds "baseMonthlyData", it will NOT match this (Firebase-only) dashboard.
+// To make them match 1:1, ReportAnalytics must also be Firebase-only (remove the base monthly/week data).
+
+import React, { useState, useEffect, useMemo } from "react";
+import { FiArrowLeft, FiAlertTriangle, FiClock, FiGrid, FiMapPin, FiTrendingUp } from "react-icons/fi";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  LabelList,
+  CartesianGrid,
+} from "recharts";
 import { ref, onValue } from "firebase/database";
 import { db } from "../../firebaseConfig";
 
-const HoverDevCards = ({ onPurokSelect, selectedPurok, onBackToDashboard }) => {
-  // Base data from reports
-  const basePurokStats = {
-    1: { urgent: 2, nonUrgent: 10 },
-    2: { urgent: 3, nonUrgent: 11 },
-    3: { urgent: 5, nonUrgent: 20 },
-    4: { urgent: 3, nonUrgent: 11 },
-    5: { urgent: 2, nonUrgent: 21 },
-    6: { urgent: 5, nonUrgent: 21 }
-  };
+const PUROKS = [1, 2, 3, 4, 5, 6];
 
-  const [purokStats, setPurokStats] = useState(basePurokStats);
+const HoverDevCards = ({ onPurokSelect, selectedPurok, onBackToDashboard }) => {
+  // ✅ Firebase-only stats (init to zeros)
+  const [purokStats, setPurokStats] = useState(() =>
+    PUROKS.reduce((acc, p) => {
+      acc[p] = { urgent: 0, nonUrgent: 0 };
+      return acc;
+    }, {})
+  );
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const usersRef = ref(db, "users");
-    
+
     const unsubscribe = onValue(usersRef, (snapshot) => {
-      // Initialize with base data
-      const purokComplaints = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+      // start with zeros every refresh
+      const nextStats = PUROKS.reduce((acc, p) => {
+        acc[p] = { urgent: 0, nonUrgent: 0 };
+        return acc;
+      }, {});
 
       if (!snapshot.exists()) {
-        // If no Firebase data, use base stats
-        setPurokStats(basePurokStats);
+        setPurokStats(nextStats);
         setLoading(false);
         return;
       }
 
       const usersData = snapshot.val();
 
-      // Collect all complaints by incidentPurok from Firebase
+      // ✅ Collect and tally ALL complaints from Firebase
       Object.keys(usersData).forEach((userId) => {
         const user = usersData[userId];
-        if (user.userComplaints) {
-          Object.keys(user.userComplaints).forEach((complaintId) => {
-            const complaint = user.userComplaints[complaintId];
-            
-            // Use incidentPurok instead of user.purok
-            const incidentPurok = complaint.incidentPurok ? parseInt(complaint.incidentPurok) : null;
-            
-            if (incidentPurok >= 1 && incidentPurok <= 6) {
-              purokComplaints[incidentPurok].push({
-                isUrgent: complaint.label === 'urgent',
-                timestamp: complaint.timestamp
-              });
-            }
-          });
-        }
+        const complaintsObj = user?.userComplaints;
+
+        if (!complaintsObj) return;
+
+        Object.keys(complaintsObj).forEach((complaintId) => {
+          const complaint = complaintsObj[complaintId];
+
+          // Use incidentPurok from complaint (same as your earlier code)
+          const incidentPurokRaw = complaint?.incidentPurok ?? complaint?.purok;
+          const incidentPurok = incidentPurokRaw ? parseInt(incidentPurokRaw, 10) : NaN;
+
+          if (!Number.isFinite(incidentPurok)) return;
+          if (incidentPurok < 1 || incidentPurok > 6) return;
+
+          const isUrgent = complaint?.label === "urgent"; // ✅ same rule as ReportAnalytics
+          if (isUrgent) nextStats[incidentPurok].urgent += 1;
+          else nextStats[incidentPurok].nonUrgent += 1;
+        });
       });
 
-      // Calculate stats for each purok (BASE DATA + Firebase data)
-      const updatedStats = {};
-      [1, 2, 3, 4, 5, 6].forEach((purok) => {
-        const complaints = purokComplaints[purok];
-        
-        // Count from Firebase
-        const firebaseUrgent = complaints.filter(c => c.isUrgent).length;
-        const firebaseNonUrgent = complaints.filter(c => !c.isUrgent).length;
-        
-        // Add base data
-        const baseData = basePurokStats[purok];
-        updatedStats[purok] = {
-          urgent: baseData.urgent + firebaseUrgent,
-          nonUrgent: baseData.nonUrgent + firebaseNonUrgent
-        };
-      });
-
-      setPurokStats(updatedStats);
+      setPurokStats(nextStats);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const totals = useMemo(() => {
+    const arr = Object.values(purokStats);
+    const urgent = arr.reduce((s, v) => s + (v?.urgent || 0), 0);
+    const nonUrgent = arr.reduce((s, v) => s + (v?.nonUrgent || 0), 0);
+    return { urgent, nonUrgent, total: urgent + nonUrgent };
+  }, [purokStats]);
 
   if (loading) {
     return (
@@ -91,58 +104,71 @@ const HoverDevCards = ({ onPurokSelect, selectedPurok, onBackToDashboard }) => {
   }
 
   if (selectedPurok) {
-    return <PurokInfo purokNumber={selectedPurok} onBack={onBackToDashboard} purokStats={purokStats} />;
+    return (
+      <PurokInfo
+        purokNumber={selectedPurok}
+        onBack={onBackToDashboard}
+        purokStats={purokStats}
+      />
+    );
   }
 
   return (
-    <div className="min-h-screen p-6 flex flex-col items-center justify-start bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
+    <div className="min-h-screen p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
       {/* Background Watermark Logo */}
       <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage: 'url("/src/assets/sanroquelogo.png")',
-          backgroundPosition: 'right 35% center',
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: '49%',
+          backgroundPosition: "right 35% center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "49%",
           opacity: 0.18,
-          filter: 'brightness(1.4) contrast(1.1)'
+          filter: "brightness(1.4) contrast(1.1)",
         }}
         aria-hidden="true"
       />
 
-      <div className="relative z-10 w-full">
-        {/* Dashboard Header */}
-        <div className="text-center mb-12 space-y-3">
+      <div className="relative z-10 w-full max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-3 pt-2">
           <div className="flex items-center justify-center gap-4 mb-2">
             <div className="h-1 w-16 bg-gradient-to-r from-transparent to-indigo-500 rounded-full"></div>
             <FiGrid className="text-indigo-600 text-4xl animate-pulse" />
             <div className="h-1 w-16 bg-gradient-to-l from-transparent to-indigo-500 rounded-full"></div>
           </div>
-          
-          <h1 className="text-6xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+
+          <h1 className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
             Dashboard
           </h1>
-          
-          <p className="text-gray-600 text-lg font-medium">
+
+          <p className="text-gray-600 text-base md:text-lg font-medium">
             Select a Purok to view detailed information
           </p>
-          
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <div className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="h-1.5 w-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="h-1.5 w-1.5 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+
+          {/* Totals pills */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Pill color="indigo" icon={<FiTrendingUp />}>
+              Total Cases: <span className="font-extrabold">{totals.total}</span>
+            </Pill>
+            <Pill color="red" icon={<FiAlertTriangle />}>
+              Urgent: <span className="font-extrabold">{totals.urgent}</span>
+            </Pill>
+            <Pill color="blue" icon={<FiClock />}>
+              Non-Urgent: <span className="font-extrabold">{totals.nonUrgent}</span>
+            </Pill>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
-          {Object.keys(purokStats).map((key) => (
-            <Card
-              key={key}
-              title={`Purok ${key}`}
-              Icon={FiMapPin}
-              onClick={() => onPurokSelect(Number(key))}
-              urgent={purokStats[key].urgent}
-              nonUrgent={purokStats[key].nonUrgent}
+        {/* Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {PUROKS.map((p) => (
+            <PurokCard
+              key={p}
+              purokNo={p}
+              urgent={purokStats[p]?.urgent || 0}
+              nonUrgent={purokStats[p]?.nonUrgent || 0}
+              onClick={() => onPurokSelect(p)}
             />
           ))}
         </div>
@@ -151,75 +177,105 @@ const HoverDevCards = ({ onPurokSelect, selectedPurok, onBackToDashboard }) => {
   );
 };
 
-const Card = ({ title, Icon, onClick, urgent, nonUrgent }) => {
+/* ===========================
+   UI COMPONENTS
+=========================== */
+
+const Pill = ({ color = "indigo", icon, children }) => {
+  const map = {
+    indigo: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    red: "bg-red-50 text-red-700 border-red-200",
+    blue: "bg-blue-50 text-blue-700 border-blue-200",
+    gray: "bg-gray-50 text-gray-700 border-gray-200",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold shadow-sm ${
+        map[color] || map.gray
+      }`}
+    >
+      <span className="text-sm">{icon}</span>
+      {children}
+    </span>
+  );
+};
+
+const PurokCard = ({ purokNo, urgent, nonUrgent, onClick }) => {
   const total = urgent + nonUrgent;
+  const urgentPct = total > 0 ? Math.round((urgent / total) * 100) : 0;
 
   return (
     <button
       onClick={onClick}
-      className="relative w-full h-70 p-5 rounded-2xl border-2 border-gray-200 bg-white overflow-hidden group hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 hover:border-indigo-400"
+      className="group relative w-full rounded-2xl border-2 border-gray-200 bg-white overflow-hidden
+                 shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300"
     >
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500 ease-out" />
-      
-      {/* Decorative circles */}
-      <div className="absolute -top-10 -right-10 w-28 h-28 bg-indigo-100 rounded-full opacity-50 group-hover:scale-150 group-hover:bg-white/20 transition-all duration-500"></div>
-      <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-purple-100 rounded-full opacity-50 group-hover:scale-150 group-hover:bg-white/20 transition-all duration-500"></div>
+      <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600" />
 
-      {/* Floating decorative icon */}
-      <Icon className="absolute z-10 -top-6 -right-6 text-[5.5rem] text-slate-100 group-hover:text-white/30 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500" />
+      <div className="absolute -top-16 -right-16 w-52 h-52 rounded-full bg-indigo-100/70 blur-2xl group-hover:bg-purple-100/80 transition-colors" />
+      <div className="absolute -bottom-16 -left-16 w-52 h-52 rounded-full bg-pink-100/60 blur-2xl group-hover:bg-indigo-100/70 transition-colors" />
 
-      {/* Content Container */}
-      <div className="relative z-10 h-full flex flex-col">
-        {/* Icon and Title Section */}
-        <div className="mb-3">
-          <div className="inline-flex items-center justify-center w-11 h-11 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl mb-2 group-hover:bg-white group-hover:shadow-lg transition-all duration-300">
-            <Icon className="text-lg text-white group-hover:text-white-600 transition-colors duration-300" />
+      <div className="relative p-6 text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center shadow-sm">
+              <FiMapPin className="text-indigo-600" size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-bold tracking-wide text-gray-500 uppercase">Purok</p>
+              <h3 className="text-2xl font-extrabold text-gray-900 leading-tight">{purokNo}</h3>
+            </div>
           </div>
-          
-          <h3 className="font-extrabold text-2xl md:text-3xl text-slate-900 group-hover:text-white transition-colors duration-300" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '-0.02em' }}>
-            {title}
-          </h3>
+
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-extrabold">
+            <FiTrendingUp />
+            Total: {total}
+          </span>
         </div>
 
-        {/* Stats Section */}
-        <div className="mt-auto space-y-2.5">
-          {/* Total Badge */}
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 group-hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all duration-300 border border-indigo-100 group-hover:border-white/30">
-            <FiTrendingUp className="text-indigo-600 group-hover:text-indigo transition-colors duration-300" size={15} />
-            <span className="text-base font-bold text-slate-800 group-hover:text-black transition-colors duration-300" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-              Total: {total}
-            </span>
+        <div className="mt-5">
+          <div className="flex items-center justify-between text-xs font-bold text-gray-600">
+            <span>Urgent share</span>
+            <span>{urgentPct}%</span>
           </div>
-
-          {/* Urgent & Non-Urgent Stats */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="bg-red-50 group-hover:bg-red-500/20 rounded-lg p-2.5 border border-red-200 group-hover:border-red-300 transition-all duration-300">
-              <div className="flex items-center gap-1.5 mb-1">
-                <FiAlertTriangle className="text-red-600 group-hover:text-red-100" size={13} />
-                <span className="text-[9px] font-bold text-red-600 group-hover:text-red-100 uppercase tracking-wider" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Urgent</span>
-              </div>
-              <p className="text-2xl font-extrabold text-red-700 group-hover:text-white" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{urgent}</p>
-            </div>
-
-            <div className="bg-blue-50 group-hover:bg-blue-500/20 rounded-lg p-2.5 border border-blue-200 group-hover:border-blue-300 transition-all duration-300">
-              <div className="flex items-center gap-1 mb-1">
-                <FiClock className="text-blue-600 group-hover:text-blue-100" size={13} />
-                <span className="text-[9px] font-bold text-blue-600 group-hover:text-blue-100 uppercase tracking-wide" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>Non-Urgent</span>
-              </div>
-              <p className="text-2xl font-extrabold text-blue-700 group-hover:text-white" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>{nonUrgent}</p>
-            </div>
+          <div className="mt-2 h-2.5 w-full rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-500"
+              style={{ width: `${urgentPct}%` }}
+            />
           </div>
         </div>
 
-        {/* Hover indicator */}
-        <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="flex items-center gap-1 text-white text-xs font-bold" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-            <span>View</span>
-            <svg className="w-3 h-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-red-200 bg-red-50/60 p-3">
+            <div className="flex items-center gap-2 text-red-700">
+              <FiAlertTriangle />
+              <span className="text-[11px] font-extrabold uppercase tracking-wide">Urgent</span>
+            </div>
+            <p className="mt-1 text-3xl font-extrabold text-gray-900">{urgent}</p>
+          </div>
+
+          <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+            <div className="flex items-center gap-2 text-blue-700">
+              <FiClock />
+              <span className="text-[11px] font-extrabold uppercase tracking-wide">Non-Urgent</span>
+            </div>
+            <p className="mt-1 text-3xl font-extrabold text-gray-900">{nonUrgent}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center justify-end">
+          <span className="inline-flex items-center gap-2 text-indigo-700 font-extrabold text-sm">
+            View details
+            <svg
+              className="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
             </svg>
-          </div>
+          </span>
         </div>
       </div>
     </button>
@@ -228,14 +284,22 @@ const Card = ({ title, Icon, onClick, urgent, nonUrgent }) => {
 
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
+    const item = payload[0]?.payload;
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-        <p className="font-semibold text-gray-800">{payload[0].payload.name}</p>
+      <div className="bg-white p-3 rounded-xl shadow-xl border border-gray-200">
+        <p className="font-extrabold text-gray-900">{item?.name}</p>
+        <p className="text-sm text-gray-600 mt-1">
+          Value: <span className="font-bold text-gray-900">{item?.value}</span>
+        </p>
       </div>
     );
   }
   return null;
 };
+
+/* ===========================
+   PUROK INFO (DETAIL VIEW)
+=========================== */
 
 const PurokInfo = ({ purokNumber, onBack, purokStats }) => {
   const [purokData, setPurokData] = useState(null);
@@ -243,28 +307,28 @@ const PurokInfo = ({ purokNumber, onBack, purokStats }) => {
 
   useEffect(() => {
     const usersRef = ref(db, "users");
-    
-    const unsubscribe = onValue(usersRef, (snapshot) => {
-      // Base purok information (static data)
+
+    const unsubscribe = onValue(usersRef, () => {
+      // ✅ Keep only demographic info hardcoded (NOT complaint counts)
       const basePurokInfo = {
-        1: { name: "Purok 1", description: "Information about Purok 1", residents: 1228, complaints: 10, urgent: 2, nonUrgent: 8 },
-        2: { name: "Purok 2", description: "Information about Purok 2", residents: 1576, complaints: 13, urgent: 3, nonUrgent: 10 },
-        3: { name: "Purok 3", description: "Information about Purok 3", residents: 2894, complaints: 24, urgent: 5, nonUrgent: 19 },
-        4: { name: "Purok 4", description: "Information about Purok 4", residents: 1553, complaints: 13, urgent: 3, nonUrgent: 10 },
-        5: { name: "Purok 5", description: "Information about Purok 5", residents: 3481, complaints: 22, urgent: 2, nonUrgent: 20 },
-        6: { name: "Purok 6", description: "Information about Purok 6", residents: 3074, complaints: 25, urgent: 5, nonUrgent: 20 }
+        1: { name: "Purok 1", description: "Information about Purok 1", residents: 1228 },
+        2: { name: "Purok 2", description: "Information about Purok 2", residents: 1576 },
+        3: { name: "Purok 3", description: "Information about Purok 3", residents: 2894 },
+        4: { name: "Purok 4", description: "Information about Purok 4", residents: 1553 },
+        5: { name: "Purok 5", description: "Information about Purok 5", residents: 3481 },
+        6: { name: "Purok 6", description: "Information about Purok 6", residents: 3074 },
       };
 
       const baseInfo = basePurokInfo[purokNumber];
-      const stats = purokStats[purokNumber];
-      
-      // Combine base info with current stats from parent component
+      const stats = purokStats[purokNumber] || { urgent: 0, nonUrgent: 0 };
+
       setPurokData({
         ...baseInfo,
         complaints: stats.urgent + stats.nonUrgent,
         urgent: stats.urgent,
-        nonUrgent: stats.nonUrgent
+        nonUrgent: stats.nonUrgent,
       });
+
       setLoading(false);
     });
 
@@ -282,124 +346,90 @@ const PurokInfo = ({ purokNumber, onBack, purokStats }) => {
     );
   }
 
-  // Data for complaint breakdown chart
   const complaintChartData = [
-    { name: "Total Complaints", value: purokData.complaints, color: "#10B981" },
+    { name: "Total", value: purokData.complaints, color: "#10B981" },
     { name: "Urgent", value: purokData.urgent, color: "#EF4444" },
-    { name: "Non-Urgent", value: purokData.nonUrgent, color: "#3B82F6" }
+    { name: "Non-Urgent", value: purokData.nonUrgent, color: "#3B82F6" },
   ];
 
   return (
     <div className="relative min-h-screen p-6 bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* Background watermark */}
       <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           backgroundImage: 'url("/src/assets/sanroquelogo.png")',
-          backgroundPosition: 'right 35% center',
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: '49%',
+          backgroundPosition: "right 35% center",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "49%",
           opacity: 0.18,
-          filter: 'brightness(1.4) contrast(1.1)'
+          filter: "brightness(1.4) contrast(1.1)",
         }}
+        aria-hidden="true"
       />
 
       <div className="relative z-10 max-w-7xl mx-auto space-y-6">
-        <button onClick={onBack} className="flex items-center gap-2 mb-6 text-indigo-600 hover:text-indigo-800 transition-colors font-semibold">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors font-extrabold"
+        >
           <FiArrowLeft size={20} />
           <span className="text-lg">Back to Dashboard</span>
         </button>
 
-        {/* Purok Info Header */}
-        <div className="text-center mb-12 space-y-3">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <div className="h-1 w-16 bg-gradient-to-r from-transparent to-indigo-500 rounded-full"></div>
-            <FiMapPin className="text-indigo-600 text-4xl animate-pulse" />
-            <div className="h-1 w-16 bg-gradient-to-l from-transparent to-indigo-500 rounded-full"></div>
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm">
+            <FiMapPin className="text-indigo-600" />
+            <span className="font-extrabold text-gray-900">{purokData.name}</span>
           </div>
-          
-          <h1 className="text-6xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            {purokData.name}
-          </h1>
-          
-          <p className="text-gray-600 text-lg font-medium">
-            {purokData.description}
-          </p>
-          
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <div className="h-1.5 w-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="h-1.5 w-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="h-1.5 w-1.5 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-          </div>
+
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900">{purokData.name} Overview</h1>
+          <p className="text-gray-600">{purokData.description}</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <div className="bg-white rounded-xl shadow-lg border-2 border-blue-200 p-6">
-            <p className="text-blue-600 text-sm font-semibold mb-1">TOTAL RESIDENTS</p>
-            <p className="text-4xl font-bold text-gray-900">{purokData.residents}</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border-2 border-green-200 p-6">
-            <p className="text-green-600 text-sm font-semibold mb-1">TOTAL COMPLAINTS</p>
-            <p className="text-4xl font-bold text-gray-900">{purokData.complaints}</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border-2 border-red-200 p-6">
-            <p className="text-red-600 text-sm font-semibold mb-1">URGENT</p>
-            <p className="text-4xl font-bold text-gray-900">{purokData.urgent}</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border-2 border-blue-200 p-6">
-            <p className="text-blue-600 text-sm font-semibold mb-1">NON-URGENT</p>
-            <p className="text-4xl font-bold text-gray-900">{purokData.nonUrgent}</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="TOTAL RESIDENTS" value={purokData.residents} tone="blue" />
+          <StatCard title="TOTAL COMPLAINTS" value={purokData.complaints} tone="green" />
+          <StatCard title="URGENT" value={purokData.urgent} tone="red" />
+          <StatCard title="NON-URGENT" value={purokData.nonUrgent} tone="indigo" />
         </div>
 
-        {/* Graph Section */}
-        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-8 mb-10">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3 mb-6">
-            <FiAlertTriangle className="text-orange-600" size={24} />
-            Figure 1: Complaint Breakdown
-          </h3>
-
-          <div className="w-full h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={complaintChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 14 }}
-                  angle={0}
-                  textAnchor="middle"
-                />
-                <YAxis tick={{ fontSize: 14 }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" maxBarSize={100} radius={[8, 8, 0, 0]}>
-                  {complaintChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                  <LabelList 
-                    dataKey="value" 
-                    position="top" 
-                    style={{ fontSize: '16px', fontWeight: 'bold', fill: '#374151' }}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-3">
+              <FiAlertTriangle className="text-orange-600" size={22} />
+              Figure 1: Complaint Breakdown
+            </h3>
+            <span className="text-xs font-bold text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1 rounded-full">
+              Firebase Only
+            </span>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 mt-6">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span className="text-sm font-semibold text-gray-700">Total Complaints: {purokData.complaints}</span>
+          <div className="p-6">
+            <div className="h-80 rounded-xl border border-gray-200 bg-gradient-to-b from-gray-50 to-white p-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={complaintChartData} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 13, fontWeight: 800 }} />
+                  <YAxis tick={{ fontSize: 12, fontWeight: 800 }} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" maxBarSize={120} radius={[12, 12, 0, 0]}>
+                    {complaintChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                    <LabelList
+                      dataKey="value"
+                      position="top"
+                      style={{ fontSize: "14px", fontWeight: 900, fill: "#111827" }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span className="text-sm font-semibold text-gray-700">Urgent: {purokData.urgent}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded"></div>
-              <span className="text-sm font-semibold text-gray-700">Non-Urgent: {purokData.nonUrgent}</span>
+
+            <div className="flex flex-wrap justify-center gap-3 mt-5">
+              <LegendDot color="bg-green-500" label={`Total: ${purokData.complaints}`} />
+              <LegendDot color="bg-red-500" label={`Urgent: ${purokData.urgent}`} />
+              <LegendDot color="bg-blue-500" label={`Non-Urgent: ${purokData.nonUrgent}`} />
             </div>
           </div>
         </div>
@@ -408,7 +438,34 @@ const PurokInfo = ({ purokNumber, onBack, purokStats }) => {
   );
 };
 
-// Demo wrapper
+const StatCard = ({ title, value, tone = "indigo" }) => {
+  const tones = {
+    indigo: "border-indigo-200",
+    red: "border-red-200",
+    blue: "border-blue-200",
+    green: "border-green-200",
+    amber: "border-amber-200",
+  };
+
+  return (
+    <div className={`bg-white rounded-2xl shadow-lg border-2 ${tones[tone] || tones.indigo} p-6`}>
+      <p className="text-xs font-extrabold tracking-wider text-gray-600 mb-1">{title}</p>
+      <p className="text-4xl font-extrabold text-gray-900">{value}</p>
+    </div>
+  );
+};
+
+const LegendDot = ({ color, label }) => (
+  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white border border-gray-200 shadow-sm">
+    <span className={`w-3.5 h-3.5 rounded ${color}`} />
+    <span className="text-sm font-semibold text-gray-700">{label}</span>
+  </div>
+);
+
+/* ===========================
+   DEMO WRAPPER (KEEP IF YOU NEED IT)
+=========================== */
+
 export default function App() {
   const [selectedPurok, setSelectedPurok] = React.useState(null);
 
